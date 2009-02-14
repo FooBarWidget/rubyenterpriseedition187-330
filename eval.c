@@ -10180,6 +10180,7 @@ rb_mod_define_method(argc, argv, mod)
 	rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);
     }
     orig = body;
+    ruby_set_current_source(); /* for Method#__line__ */
     if (RDATA(body)->dmark == (RUBY_DATA_FUNC)bm_mark) {
 	node = NEW_DMETHOD(method_unbind(body));
     }
@@ -10210,6 +10211,98 @@ rb_mod_define_method(argc, argv, mod)
     rb_add_method(mod, id, node, noex);
     return orig;
 }
+
+
+/*
+ * call-seq:
+ *    meth.__file__  => String  
+ *
+ * returns the filename containing this method's definition
+ * raises ArgumentError if method has no associated ruby source code
+ */
+ 
+static VALUE
+method_source_file_name(VALUE method)
+{
+    struct METHOD *data;
+    NODE *node;
+
+    Data_Get_Struct(method, struct METHOD, data);   
+    if (node = data->body) {
+      const char *filename = node->nd_file;
+      if (filename)
+        return rb_str_new2(filename);
+    }
+    rb_raise(rb_eArgError, "native Method");
+}
+
+/*
+ * call-seq:
+ *    meth.__line__  => Fixnum  
+ *
+ * returns the starting line number of this method
+ * raises ArgumentError if method has no associated ruby source code
+ */
+ 
+static VALUE
+method_source_line(VALUE method)
+{
+    struct METHOD *data;
+    NODE *node;
+
+    Data_Get_Struct(method, struct METHOD, data);
+    if (node = data->body) {
+      int lineno = nd_line(node);
+      if (lineno)
+        return INT2FIX(nd_line(node));
+    }
+    rb_raise(rb_eArgError, "native Method");
+}
+
+
+
+/*
+ * call-seq:
+ *    prc.__file__  => String  
+ *
+ * returns the filename where this proc is defined
+ * raises ArgumentError if proc has no associated ruby source
+ */
+ 
+static VALUE
+proc_source_file_name(VALUE block)
+{
+    struct BLOCK *data;
+    const char *filename;
+    NODE *node;
+
+    Data_Get_Struct(block, struct BLOCK, data);
+    if ((node = data->frame.node) || (node = data->body))
+      return rb_str_new2(node->nd_file);
+    rb_raise(rb_eArgError, "native Proc");
+}
+
+
+/*
+ * call-seq:
+ *    prc.__line__  => Fixnum  
+ *
+ * returns the starting line number of this proc
+ * raises ArgumentError if proc has no associated ruby source code
+ */
+ 
+static VALUE
+proc_source_line(VALUE block)
+{
+    struct BLOCK *data;
+    NODE *node;
+    
+    Data_Get_Struct(block, struct BLOCK, data);
+    if ((node = data->frame.node) || (node = data->body))
+      return INT2FIX( nd_line(node) );
+    rb_raise(rb_eArgError, "native Proc");
+}
+
 
 /*
  *  <code>Proc</code> objects are blocks of code that have been bound to
