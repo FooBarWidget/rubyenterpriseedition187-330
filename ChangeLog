@@ -2138,6 +2138,23 @@ Fri Jan  2 03:08:47 2009  Kouhei Sutou  <kou@cozmixng.org>
 
 	* test/rss/: use PNG instead of zlib as binary data. [ruby-dev:35666]
 
+Tue Dec  9  8:11:36 2008  Brent Roman  <brent@mbari.org>
+
+     * eval.c:  added Continuation.thread method
+        * cc_mark frees the continuation's stack if its thread is dead
+          avoids recursive gc that segfaults [see Dec 5th, 2007 ruby-core]
+
+        * added cast in PUSH_FRAME() to eliminate gcc 4.2 compiler warnings    
+                   
+        * THREAD_DATA() replaces rb_thread_check() in most contexts
+        
+        * rb_thread_check now complains when passed a Continuation
+          (no longer need redundant check in thgroup_add()
+        
+        * rb_callcc() assigns th->thread before scope_dup()
+          this avoids segfaults if this scope_dup() triggers a gc pass
+        
+
 Tue Nov 11 01:07:32 2008  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
 
 	* configure.in: fix SEGV on Mac OS X 10.5.3 with --enable-pthread.
