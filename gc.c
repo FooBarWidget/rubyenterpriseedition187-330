@@ -70,13 +70,66 @@ void *alloca ();
 #endif
 #endif
 
-static unsigned long malloc_increase = 0;
+
+size_t rb_gc_malloc_increase = 0;
+#define malloc_increase rb_gc_malloc_increase
 static unsigned long malloc_limit = GC_MALLOC_LIMIT;
+size_t rb_gc_malloc_limit = GC_MALLOC_LIMIT-GC_MALLOC_LIMIT/8;
+
+/*
+ *  call-seq:
+ *     GC.limit    => increase limit in bytes
+ *
+ *  Get the # of bytes that may be allocated before triggering
+ *  a mark and sweep by the garbarge collector to reclaim unused storage.
+ *
+ */
+static VALUE gc_getlimit(VALUE mod)
+{
+  return ULONG2NUM(malloc_limit);
+}
+
+/*
+ *  call-seq:
+ *     GC.limit=   => updated increase limit in bytes
+ *
+ *  Set the # of bytes that may be allocated before triggering
+ *  a mark and sweep by the garbarge collector to reclaim unused storage.
+ *  Attempts to set the GC.limit= less than 0 will be ignored.
+ *
+ *     GC.limit=5000000   #=> 5000000
+ *     GC.limit           #=> 5000000
+ *     GC.limit=-50       #=> 5000000
+ *     GC.limit=0         #=> 0
+ *
+ */
+static VALUE gc_setlimit(VALUE mod, VALUE newLimit)
+{
+  long limit = NUM2LONG(newLimit);
+  if (limit < 0) return gc_getlimit(mod);
+  malloc_limit = limit;
+  rb_gc_malloc_limit = malloc_limit - malloc_limit/8;
+  return newLimit;
+}
+
+
+/*
+ *  call-seq:
+ *     GC.increase
+ *
+ *  Get # of bytes that have been allocated since the last mark & sweep
+ *
+ */
+static VALUE gc_increase(VALUE mod)
+{
+  return ULONG2NUM(malloc_increase);
+}
+
+
 static void run_final();
 static VALUE nomem_error;
 static void garbage_collect();
 
-int ruby_gc_stress = 0;
 
 NORETURN(void rb_exc_jump _((VALUE)));
 
@@ -97,40 +150,6 @@ rb_memerror()
     rb_exc_raise(nomem_error);
 }
 
-/*
- *  call-seq:
- *    GC.stress                 => true or false
- *
- *  returns current status of GC stress mode.
- */
-
-static VALUE
-gc_stress_get(self)
-    VALUE self;
-{
-    return ruby_gc_stress ? Qtrue : Qfalse;
-}
-
-/*
- *  call-seq:
- *    GC.stress = bool          => bool
- *
- *  updates GC stress mode.
- *
- *  When GC.stress = true, GC is invoked for all GC opportunity:
- *  all memory and object allocation.
- *
- *  Since it makes Ruby very slow, it is only for debugging.
- */
-
-static VALUE
-gc_stress_set(self, bool)
-    VALUE self, bool;
-{
-    rb_secure(2);
-    ruby_gc_stress = RTEST(bool);
-    return bool;
-}
 
 void *
 ruby_xmalloc(size)
@@ -143,8 +162,9 @@ ruby_xmalloc(size)
     }
     if (size == 0) size = 1;
 
-    if (ruby_gc_stress || (malloc_increase+size) > malloc_limit) {
+    if ((malloc_increase+=size) > malloc_limit) {
 	garbage_collect();
+        malloc_increase = size;
     }
     RUBY_CRITICAL(mem = malloc(size));
     if (!mem) {
@@ -154,8 +174,7 @@ ruby_xmalloc(size)
 	    rb_memerror();
 	}
     }
-    malloc_increase += size;
-
+    rb_gc_update_stack_extent();
     return mem;
 }
 
@@ -183,7 +202,10 @@ ruby_xrealloc(ptr, size)
     }
     if (!ptr) return xmalloc(size);
     if (size == 0) size = 1;
-    if (ruby_gc_stress) garbage_collect();
+    if ((malloc_increase+=size) > malloc_limit) {
+	garbage_collect();
+        malloc_increase = size;
+    }
     RUBY_CRITICAL(mem = realloc(ptr, size));
     if (!mem) {
 	garbage_collect();
@@ -192,8 +214,7 @@ ruby_xrealloc(ptr, size)
 	    rb_memerror();
         }
     }
-    malloc_increase += size;
-
+    rb_gc_update_stack_extent();
     return mem;
 }
 
@@ -433,7 +454,7 @@ rb_newobj()
     if (during_gc)
 	rb_bug("object allocation during garbage collection phase");
 
-    if (ruby_gc_stress || !freelist) garbage_collect();
+    if (!malloc_limit || !freelist) garbage_collect();
 
     obj = (VALUE)freelist;
     freelist = freelist->as.free.next;
@@ -467,6 +488,9 @@ VALUE *rb_gc_stack_start = 0;
 #ifdef __ia64
 VALUE *rb_gc_register_stack_start = 0;
 #endif
+
+VALUE *rb_gc_stack_end = (VALUE *)STACK_GROW_DIRECTION;
+
 
 #ifdef DJGPP
 /* set stack size (http://www.delorie.com/djgpp/v2faq/faq15_9.html) */
@@ -518,18 +542,15 @@ stack_end_address(VALUE **stack_end_p)
 #elif STACK_GROW_DIRECTION < 0
 # define STACK_UPPER(x, a, b) b
 #else
-static int grow_direction;
+int rb_gc_stack_grow_direction;
 static int
 stack_grow_direction(addr)
     VALUE *addr;
 {
     SET_STACK_END;
-
-    if (STACK_END > addr) return grow_direction = 1;
-    return grow_direction = -1;
+    return rb_gc_stack_grow_direction = STACK_END > addr ? 1 : -1;
 }
-# define stack_growup_p(x) ((grow_direction ? grow_direction : stack_grow_direction(x)) > 0)
-# define STACK_UPPER(x, a, b) (stack_growup_p(x) ? a : b)
+# define STACK_UPPER(x, a, b) (rb_gc_stack_grow_direction > 0 ? a : b)
 #endif
 
 #define GC_WATER_MARK 512
@@ -1131,13 +1152,12 @@ gc_sweep()
     RVALUE *p, *pend, *final_list;
     int freed = 0;
     int i;
-    unsigned long live = 0;
     unsigned long free_min = 0;
 
     for (i = 0; i < heaps_used; i++) {
         free_min += heaps[i].limit;
     }
-    free_min = free_min * 0.2;
+    free_min /= 5;
     if (free_min < FREE_MIN)
         free_min = FREE_MIN;
 
@@ -1193,7 +1213,6 @@ gc_sweep()
 	    }
 	    else {
 		RBASIC(p)->flags &= ~FL_MARK;
-		live++;
 	    }
 	    p++;
 	}
@@ -1209,10 +1228,6 @@ gc_sweep()
 	else {
 	    freed += n;
 	}
-    }
-    if (malloc_increase > malloc_limit) {
-	malloc_limit += (malloc_increase - malloc_limit) * (double)live / (live + freed);
-	if (malloc_limit < GC_MALLOC_LIMIT) malloc_limit = GC_MALLOC_LIMIT;
     }
     malloc_increase = 0;
     if (freed < free_min) {
@@ -1429,7 +1444,7 @@ static void
 garbage_collect()
 {
     struct gc_list *list;
-    struct FRAME * volatile frame; /* gcc 2.7.2.3 -O2 bug??  */
+    struct FRAME * frame;
     jmp_buf save_regs_gc_mark;
     SET_STACK_END;
 
@@ -1477,7 +1492,7 @@ garbage_collect()
 #elif STACK_GROW_DIRECTION > 0
     rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END + 1);
 #else
-    if ((VALUE*)STACK_END < rb_gc_stack_start)
+    if (rb_gc_stack_grow_direction < 0)
 	rb_gc_mark_locations((VALUE*)STACK_END, rb_gc_stack_start);
     else
 	rb_gc_mark_locations(rb_gc_stack_start, (VALUE*)STACK_END + 1);
@@ -2158,12 +2173,16 @@ Init_GC()
 {
     VALUE rb_mObSpace;
 
+#if !STACK_GROW_DIRECTION
+    rb_gc_stack_end = stack_grow_direction(&rb_mObSpace);
+#endif
     rb_mGC = rb_define_module("GC");
     rb_define_singleton_method(rb_mGC, "start", rb_gc_start, 0);
     rb_define_singleton_method(rb_mGC, "enable", rb_gc_enable, 0);
     rb_define_singleton_method(rb_mGC, "disable", rb_gc_disable, 0);
-    rb_define_singleton_method(rb_mGC, "stress", gc_stress_get, 0);
-    rb_define_singleton_method(rb_mGC, "stress=", gc_stress_set, 1);
+    rb_define_singleton_method(rb_mGC, "limit", gc_getlimit, 0);
+    rb_define_singleton_method(rb_mGC, "limit=", gc_setlimit, 1);
+    rb_define_singleton_method(rb_mGC, "increase", gc_increase, 0);
     rb_define_method(rb_mGC, "garbage_collect", rb_gc_start, 0);
 
     rb_mObSpace = rb_define_module("ObjectSpace");

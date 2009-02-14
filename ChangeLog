@@ -2130,13 +2130,44 @@ Sun Jan  4 04:49:01 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	  [ruby-core:18041]
 
 Sun Jan  4 04:45:26 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+        * eval.c:  exclude other thread's stack frames from current one
 
+        * gc.c:  STACK_LENGTH macro takes start parameter
 	* win32/win32.c (rb_w32_select): recalc the rest of timeout for each
 	  iterations.  [ruby-core:18015]
 
+        * node.h: added stk_start pointer to ruby thread struct
 Fri Jan  2 03:08:47 2009  Kouhei Sutou  <kou@cozmixng.org>
 
+        * intern.h:  stack_length takes base pointer as parameter
+        
 	* test/rss/: use PNG instead of zlib as binary data. [ruby-dev:35666]
+
+Tue Dec 13  6:10:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  update stack extent just before and after every setjmp
+
+        * gc.c:  replaced rb_gc_stress with gc_getlimit and setlimit
+                 update stack extent after every xmalloc and xrealloc
+                 export rb_gc_stack_grow_direction if not known at compile time
+                 removed dynamic adjustment of malloc_limit
+                 removed workaround for obsolete gcc 2.7.2.3 bug                 
+
+        * signal.h: don't try to clear stress after segsegv.  It's a too late.
+        
+        * rubysig.h:  CHECK_INTS clears ghost references off stack
+
+
+Tue Dec 12  6:11:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  exclude other thread's stack frames from current one
+
+        * gc.c:  STACK_LENGTH macro takes start parameter
+
+        * node.h: added stk_start pointer to ruby thread struct
+
+        * intern.h:  stack_length takes base pointer as parameter
+        
 
 Tue Dec  9  8:11:36 2008  Brent Roman  <brent@mbari.org>
 
