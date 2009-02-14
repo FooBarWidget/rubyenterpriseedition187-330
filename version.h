@@ -25,5 +25,10 @@ RUBY_EXTERN const char *ruby_copyright;
 #define RUBY_BIRTH_MONTH 2
 #define RUBY_BIRTH_DAY 24
 
-#define RUBY_RELEASE_STR "MBARI 6 on patchlevel"
+#include "rubysig.h"
+
+#define string_arg(s) #s
+#define MBARI_RELEASE(wipe_sites) "MBARI 7-/" string_arg(wipe_sites)
+
+#define RUBY_RELEASE_STR MBARI_RELEASE(STACK_WIPE_SITES) " on patchlevel"
 #define RUBY_RELEASE_NUM RUBY_PATCHLEVEL
