@@ -79,6 +79,7 @@ static VALUE *stack_limit, *gc_stack_limit;
 static size_t malloc_increase = 0;
 static size_t malloc_limit = GC_MALLOC_LIMIT;
 
+#if MBARI_API
 /*
  *  call-seq:
  *     GC.limit    => increase limit in bytes
@@ -109,6 +110,7 @@ static VALUE gc_getlimit(VALUE mod)
 static VALUE gc_setlimit(VALUE mod, VALUE newLimit)
 {
   long limit = NUM2LONG(newLimit);
+  rb_secure(2);
   if (limit < 0) return gc_getlimit(mod);
   malloc_limit = limit;
   return newLimit;
@@ -141,6 +143,51 @@ static VALUE gc_exorcise(VALUE mod)
   return Qnil;
 }
 
+#else /* no api changes */
+
+static size_t unstressed_malloc_limit = GC_MALLOC_LIMIT;
+
+/*
+ *  call-seq:
+ *    GC.stress                 => true or false
+ *
+ *  returns current status of GC stress mode.
+ */
+
+static VALUE
+gc_stress_get(self)
+    VALUE self;
+{
+    return malloc_limit ? Qfalse : Qtrue;
+}
+
+/*
+ *  call-seq:
+ *    GC.stress = bool          => bool
+ *
+ *  updates GC stress mode.
+ *
+ *  When GC.stress = true, GC is invoked for all GC opportunity:
+ *  all memory and object allocation.
+ *
+ *  Since it makes Ruby very slow, it is only for debugging.
+ */
+
+static VALUE
+gc_stress_set(self, bool)
+    VALUE self, bool;
+{
+    rb_secure(2);
+    if (!RTEST(bool))
+      malloc_limit = unstressed_malloc_limit;
+    else if (malloc_limit > 0) {
+      unstressed_malloc_limit = malloc_limit;
+      malloc_limit = 0;
+    }
+    return bool;
+}
+
+#endif /* MBARI_API */
 
 static void run_final();
 static VALUE nomem_error;
@@ -2205,10 +2252,15 @@ Init_GC()
     rb_define_singleton_method(rb_mGC, "start", rb_gc_start, 0);
     rb_define_singleton_method(rb_mGC, "enable", rb_gc_enable, 0);
     rb_define_singleton_method(rb_mGC, "disable", rb_gc_disable, 0);
+#if MBARI_API
     rb_define_singleton_method(rb_mGC, "limit", gc_getlimit, 0);
     rb_define_singleton_method(rb_mGC, "limit=", gc_setlimit, 1);
-    rb_define_singleton_method(rb_mGC, "increase", gc_increase, 0);
+    rb_define_singleton_method(rb_mGC, "growth", gc_increase, 0);
     rb_define_singleton_method(rb_mGC, "exorcise", gc_exorcise, 0);
+#else
+    rb_define_singleton_method(rb_mGC, "stress", gc_stress_get, 0);
+    rb_define_singleton_method(rb_mGC, "stress=", gc_stress_set, 1);
+#endif
     rb_define_method(rb_mGC, "garbage_collect", rb_gc_start, 0);
 
     rb_mObSpace = rb_define_module("ObjectSpace");

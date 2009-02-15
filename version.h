@@ -27,8 +27,15 @@ RUBY_EXTERN const char *ruby_copyright;
 
 #include "rubysig.h"
 
+#ifdef MBARI_API
+#define _mbari_rev_ "MBARI"
+#else
+#define _mbari_rev_ "mbari"
+#endif
+
 #define string_arg(s) #s
-#define MBARI_RELEASE(wipe_sites) "MBARI 7/" string_arg(wipe_sites)
+
+#define MBARI_RELEASE(wipe_sites) _mbari_rev_ " 7+/" string_arg(wipe_sites)
 
 #define RUBY_RELEASE_STR MBARI_RELEASE(STACK_WIPE_SITES) " on patchlevel"
 #define RUBY_RELEASE_NUM RUBY_PATCHLEVEL
