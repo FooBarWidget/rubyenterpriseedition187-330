@@ -10155,13 +10155,16 @@ rb_mod_define_method(argc, argv, mod)
 }
 
 
-#if MBARI_API
+#ifdef MBARI_API
 /*
  * call-seq:
  *    meth.__file__  => String  
  *
  * returns the filename containing this method's definition
+ *
  * raises ArgumentError if method has no associated ruby source code
+ *
+ * <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
  
 static VALUE
@@ -10184,7 +10187,10 @@ method_source_file_name(VALUE method)
  *    meth.__line__  => Fixnum  
  *
  * returns the starting line number of this method
+ *
  * raises ArgumentError if method has no associated ruby source code
+ *
+ * <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
  
 static VALUE
@@ -10208,7 +10214,10 @@ method_source_line(VALUE method)
  *    prc.__file__  => String  
  *
  * returns the filename where this proc is defined
+ *
  * raises ArgumentError if proc has no associated ruby source
+ *
+ * <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
  
 static VALUE
@@ -10230,7 +10239,10 @@ proc_source_file_name(VALUE block)
  *    prc.__line__  => Fixnum  
  *
  * returns the starting line number of this proc
+ *
  * raises ArgumentError if proc has no associated ruby source code
+ *
+ * <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
  
 static VALUE
@@ -10333,7 +10345,7 @@ Init_Proc()
     rb_define_method(rb_cUnboundMethod, "bind", umethod_bind, 1);
     rb_define_method(rb_cModule, "instance_method", rb_mod_method, 1);
     
-#if MBARI_API
+#ifdef MBARI_API
     rb_define_method(rb_cUnboundMethod, "__file__", method_source_file_name, 0);
     rb_define_method(rb_cUnboundMethod, "__line__", method_source_line, 0);
     rb_define_method(rb_cProc, "__file__", proc_source_file_name, 0);
@@ -13641,13 +13653,15 @@ struct thgroup {
  *     cont.thread
  *  
  *  Returns the thread on which this continuation can be called
- *              (or nil if that thread has died)
+ *  or nil if that thread has died
  *
  *     t = Thread.new {callcc{|c| $x=c}; sleep 5}
  *     sleep 1
  *     $x.thread                             #=> t
  *     sleep 10
  *     $x.thread                             #=> nil
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 static VALUE
 rb_cont_thread(cont)

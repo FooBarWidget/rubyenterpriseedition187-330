@@ -79,7 +79,7 @@ static VALUE *stack_limit, *gc_stack_limit;
 static size_t malloc_increase = 0;
 static size_t malloc_limit = GC_MALLOC_LIMIT;
 
-#if MBARI_API
+#ifdef MBARI_API
 /*
  *  call-seq:
  *     GC.limit    => increase limit in bytes
@@ -87,6 +87,7 @@ static size_t malloc_limit = GC_MALLOC_LIMIT;
  *  Get the # of bytes that may be allocated before triggering
  *  a mark and sweep by the garbarge collector to reclaim unused storage.
  *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 static VALUE gc_getlimit(VALUE mod)
 {
@@ -104,8 +105,9 @@ static VALUE gc_getlimit(VALUE mod)
  *     GC.limit=5000000   #=> 5000000
  *     GC.limit           #=> 5000000
  *     GC.limit=-50       #=> 5000000
- *     GC.limit=0         #=> 0
+ *     GC.limit=0         #=> 0  #functionally equivalent to GC.stress=true
  *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 static VALUE gc_setlimit(VALUE mod, VALUE newLimit)
 {
@@ -119,12 +121,13 @@ static VALUE gc_setlimit(VALUE mod, VALUE newLimit)
 
 /*
  *  call-seq:
- *     GC.increase
+ *     GC.growth
  *
  *  Get # of bytes that have been allocated since the last mark & sweep
  *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
-static VALUE gc_increase(VALUE mod)
+static VALUE gc_growth(VALUE mod)
 {
   return ULONG2NUM(malloc_increase);
 }
@@ -136,6 +139,7 @@ static VALUE gc_increase(VALUE mod)
  *
  *  Purge ghost references from recently freed stack space
  *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 static VALUE gc_exorcise(VALUE mod)
 {
@@ -152,6 +156,8 @@ static size_t unstressed_malloc_limit = GC_MALLOC_LIMIT;
  *    GC.stress                 => true or false
  *
  *  returns current status of GC stress mode.
+ *
+ *  <i>Only available when MBARI_API extentions are disabled at build time</i>
  */
 
 static VALUE
@@ -171,6 +177,8 @@ gc_stress_get(self)
  *  all memory and object allocation.
  *
  *  Since it makes Ruby very slow, it is only for debugging.
+ *
+ *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 
 static VALUE
@@ -2252,10 +2260,10 @@ Init_GC()
     rb_define_singleton_method(rb_mGC, "start", rb_gc_start, 0);
     rb_define_singleton_method(rb_mGC, "enable", rb_gc_enable, 0);
     rb_define_singleton_method(rb_mGC, "disable", rb_gc_disable, 0);
-#if MBARI_API
+#ifdef MBARI_API
     rb_define_singleton_method(rb_mGC, "limit", gc_getlimit, 0);
     rb_define_singleton_method(rb_mGC, "limit=", gc_setlimit, 1);
-    rb_define_singleton_method(rb_mGC, "growth", gc_increase, 0);
+    rb_define_singleton_method(rb_mGC, "growth", gc_growth, 0);
     rb_define_singleton_method(rb_mGC, "exorcise", gc_exorcise, 0);
 #else
     rb_define_singleton_method(rb_mGC, "stress", gc_stress_get, 0);
