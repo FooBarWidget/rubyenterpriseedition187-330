@@ -4727,7 +4727,7 @@ rb_longjmp(tag, mesg)
 	mesg = rb_exc_new(rb_eRuntimeError, 0, 0);
     }
 
-    SET_METHOD_SOURCE();
+    ruby_set_current_source();
     if (ruby_sourcefile && !NIL_P(mesg)) {
 	at = get_backtrace(mesg);
 	if (NIL_P(at)) {
