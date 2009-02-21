@@ -65,6 +65,7 @@
 #ifndef STACK_WIPE_SITES
 # ifdef __x86_64__     /* deal with "red zone" by not inlining stack clearing */
 #  define STACK_WIPE_SITES  0x6770
+#  define MBARI_API    /* FIXME:  segfaults without this -- no idea why */
 # elif defined __ppc__ || defined __ppc64__   /* On any PowerPC, deal with... */
 #  define STACK_WIPE_SITES  0x7764   /* red zone & alloc(0) doesn't return sp */
 # else

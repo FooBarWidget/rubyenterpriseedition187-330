@@ -27,13 +27,13 @@ RUBY_EXTERN const char *ruby_copyright;
 
 #include "rubysig.h"
 
+#define string_arg(s) #s
+
 #ifdef MBARI_API
 #define _mbari_rev_ "MBARI"
 #else
 #define _mbari_rev_ "mbari"
 #endif
-
-#define string_arg(s) #s
 
 #define MBARI_RELEASE(wipe_sites) _mbari_rev_ " 7+/" string_arg(wipe_sites)
 
