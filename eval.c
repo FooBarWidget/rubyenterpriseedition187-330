@@ -1610,7 +1610,7 @@ ruby_cleanup(ex)
 {
     int state;
     volatile VALUE errs[2];
-    int nerr;
+    unsigned nerr;
 
     errs[1] = ruby_errinfo;
     ruby_safe_level = 0;
