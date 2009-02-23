@@ -995,7 +995,7 @@ rb_svar(cnt)
     ID id;
 
     if (!ruby_scope->local_tbl) return NULL;
-    if (cnt >= ruby_scope->local_tbl[0]) return NULL;
+    if ((ID)cnt >= ruby_scope->local_tbl[0]) return NULL;
     id = ruby_scope->local_tbl[cnt+1];
     while (vars) {
 	if (vars->id == id) return &vars->val;
@@ -3835,7 +3835,7 @@ rb_eval(self, node)
   VALUE self;
   NODE *node;
 {
-  VALUE result;
+  volatile VALUE result;
 
   eval_check_tick();
 again:

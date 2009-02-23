@@ -807,7 +807,7 @@ mark_locations_array(x, n)
     }
 }
 
-void inline
+inline void
 rb_gc_mark_locations(start, end)
     VALUE *start, *end;
 {
@@ -1202,7 +1202,7 @@ gc_sweep()
     RVALUE *p, *pend, *final_list;
     int freed = 0;
     int i;
-    unsigned long free_min = 0;
+    long free_min = 0;
 
     for (i = 0; i < heaps_used; i++) {
         free_min += heaps[i].limit;
@@ -1599,8 +1599,7 @@ garbage_collect()
 # ifdef nativeAllocA
   if (__stack_past (top, stack_limit)) {
   /* allocate a large frame to ensure app stack cannot grow into GC stack */
-    volatile char *spacer = 
-                    nativeAllocA(__stack_depth((void*)stack_limit,(void*)top));
+    (volatile void*) nativeAllocA(__stack_depth((void*)stack_limit,(void*)top));
   }  
   garbage_collect_0(top);
 # else /* no native alloca() available */
