@@ -1698,6 +1698,20 @@ Tue Feb 24 02:35:29 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	* hash.c (rb_hash_s_create): set nil as the value if assoc length
 	  is not enough.  [ruby-core:21249]
 
+Tue Feb 24 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * cofigure.in:  added --enable-mbari-api and --with-wipe-sites
+
+        * signal.c:  removed CHECK_INTS after kill
+        
+        * test/ruby/suicide.rb:  add tiny delay to let signal propogate
+        
+        * gc.c:  save regs properly on main stack before marking it!
+        
+        * eval.c:  numerous corrections in use of volatile variables w/setjmp()
+        
+        * version.h:  bumped date, MBARI version 7+ --> 7A
+
 Sun Feb 22 22:08:45 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* eval.c (stack_extend): streamlined rb_thread_restore_context()
@@ -1837,16 +1851,16 @@ Sun Feb 15 04:21:42 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 	  a patch from Alan Johnson <alan.wayne.johnson at gmail.com> in 
 	  [ruby-core:19982].
 
-Fri Feb 13 19:18:42 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
-
-	* lib/logger.rb (ProgName): fixed for svn, based on a patch from
-	  Nobuhiro IMAI at [ruby-dev:37108].
-
 Sun Feb 15 04:17:40 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 
 	* lib/webrick/httprequest.rb (WEBrick::HTTPRequest#read_request_line):
 	  use non-greedy match for path retrieval to avoid huge recursion
 	  for insanely long path.
+
+Fri Feb 13 19:18:42 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/logger.rb (ProgName): fixed for svn, based on a patch from
+	  Nobuhiro IMAI at [ruby-dev:37108].
 
 Fri Feb 13 19:04:54 2009  Keiju Ishitsuka  <keiju@ruby-lang.org>
 

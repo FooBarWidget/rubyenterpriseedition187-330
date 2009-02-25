@@ -152,6 +152,24 @@ AC_ARG_ENABLE(frame-address,
 if test $frame_address = yes; then
     AC_DEFINE(USE_BUILTIN_FRAME_ADDRESS)
 fi
+AC_ARG_ENABLE(mbari-api,
+       [  --enable-mbari-api      enable API changes from the MBARI patches. ],
+       [mbari_api=$enableval])
+if test $mbari_api = yes; then
+    AC_DEFINE(MBARI_API)
+fi
+AC_ARG_WITH(wipe-sites,
+[  --with-wipe-sites=MASK  override default STACK_WIPES_SITES mask in rubysig.h],
+[wipe_sites=$withval])
+if test "$wipe_sites" != ""; then
+  case $wipe_sites in
+       none|no)  wipe_sites=0x0;;
+       yes) wipe_sites=;;
+  esac
+  if test -n "$wipe_sites"; then
+    AC_DEFINE_UNQUOTED(STACK_WIPE_SITES,$wipe_sites)
+  fi
+fi
 
 AC_ARG_PROGRAM
 
@@ -1834,7 +1852,7 @@ AC_DEFINE_UNQUOTED(RUBY_SITE_ARCHLIB, "${RUBY_SITE_LIB_PATH2}/${sitearch}")
 AC_DEFINE_UNQUOTED(RUBY_VENDOR_ARCHLIB, "${RUBY_VENDOR_LIB_PATH2}/${sitearch}")
 
 AC_ARG_WITH(search-path,
-		[  --with-search-path=DIR specify the additional search path],
+		[  --with-search-path= DIR specify the additional search path],
 		[search_path=$withval])
 if test "$search_path" != ""; then
     AC_DEFINE_UNQUOTED(RUBY_SEARCH_PATH,"$search_path")

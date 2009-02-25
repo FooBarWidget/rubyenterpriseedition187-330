@@ -586,6 +586,7 @@ static size_t STACK_LEVEL_MAX = 655300;
 
 #ifndef nativeAllocA
   /* portable way to return an approximate stack pointer */
+NOINLINE(VALUE *__sp(void));
 VALUE *__sp(void) {
   VALUE tos;
   return &tos;
@@ -1497,7 +1498,6 @@ garbage_collect_0(VALUE *top_frame)
 {
     struct gc_list *list;
     struct FRAME * frame;
-    jmp_buf save_regs_gc_mark;
     SET_STACK_END;
 
 #ifdef HAVE_NATIVETHREAD
@@ -1536,10 +1536,6 @@ garbage_collect_0(VALUE *top_frame)
 	mark_tbl(finalizer_table);
     }
 
-    FLUSH_REGISTER_WINDOWS;
-    /* This assumes that all registers are saved into the jmp_buf (and stack) */
-    rb_setjmp(save_regs_gc_mark);
-    mark_locations_array((VALUE*)save_regs_gc_mark, sizeof(save_regs_gc_mark) / sizeof(VALUE *));
 #if STACK_GROW_DIRECTION < 0
     rb_gc_mark_locations(top_frame, rb_curr_thread->stk_start);
 #elif STACK_GROW_DIRECTION > 0
@@ -1594,7 +1590,12 @@ garbage_collect_0(VALUE *top_frame)
 static void
 garbage_collect()
 {
+  jmp_buf save_regs_gc_mark;
   VALUE *top = __sp();
+  FLUSH_REGISTER_WINDOWS;
+  /* This assumes that all registers are saved into the jmp_buf (and stack) */
+  rb_setjmp(save_regs_gc_mark);
+
 #if STACK_WIPE_SITES & 0x400
 # ifdef nativeAllocA
   if (__stack_past (top, stack_limit)) {

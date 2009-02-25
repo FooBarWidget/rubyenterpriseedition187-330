@@ -392,7 +392,6 @@ rb_f_kill(argc, argv)
 		rb_sys_fail(0);
 	}
     }
-    CHECK_INTS;  /* in case we killed ourselves */
     return INT2FIX(i-1);
 }
 
