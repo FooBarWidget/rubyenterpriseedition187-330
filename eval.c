@@ -1266,7 +1266,7 @@ set_backtrace(info, bt)
 static void
 error_print()
 {
-    VALUE errat = Qnil;
+    VALUE errat;
     volatile VALUE eclass, e;
     const char * einfo;
     long elen;
@@ -1274,7 +1274,7 @@ error_print()
     if (NIL_P(ruby_errinfo)) return;
 
     PUSH_TAG(PROT_NONE);
-    if (!EXEC_TAG()) errat = get_backtrace(ruby_errinfo);
+    errat = EXEC_TAG() ? Qnil : get_backtrace(ruby_errinfo);
     if (EXEC_TAG()) goto error;
     if (NIL_P(errat)){
 	ruby_set_current_source();
