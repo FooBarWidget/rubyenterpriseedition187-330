@@ -1686,11 +1686,13 @@ Wed Feb 25 14:57:18 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	* win32/win32.c (winnt_stat): gets rid of strange behavior of
 	  GetFileAttributes().  [ruby-core:21269]
 
-Tue Feb 25 00:01:19 2009  Brent Roman  <brent@mbari.org>
+Wed Feb 25 12:01:19 2009  Brent Roman  <brent@mbari.org>
 
         * gc.c:  default GC.limit=2e6*sizeof(VALUE)
         
         * eval.c:  added RB_GC_GUARDs to eval_slit() & more volatile tweaks
+        
+        * re.c:  removed unneeded volatile qualifier & copy in rb_regcomp()
         
         * version.h:  bumped date, MBARI version 7A --> 8A
 

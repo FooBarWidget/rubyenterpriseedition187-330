@@ -4316,7 +4316,7 @@ module_setup(module, n)
     NODE *node = n->nd_body;
     int state;
     struct FRAME frame;
-    VALUE result = Qnil;
+    VALUE result;
     TMP_PROTECT;
 
     frame = *ruby_frame;
@@ -4849,11 +4849,10 @@ rb_make_exception(argc, argv)
     int argc;
     VALUE *argv;
 {
-    VALUE mesg;
+    VALUE mesg = Qnil;
     ID exception;
     int n;
 
-    mesg = Qnil;
     switch (argc) {
       case 0:
 	mesg = Qnil;
@@ -6077,9 +6076,10 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 	    Data_Get_Struct(body->nd_cval, struct BLOCK, data);
 	    EXEC_EVENT_HOOK(RUBY_EVENT_CALL, data->body, recv, id, klass);
 	}
-	result = proc_invoke(body->nd_cval, rb_ary_new4(argc, argv), recv, klass);
+	result = proc_invoke(body->nd_cval, rb_ary_new4(argc,argv), recv,klass);
 	if (event_hooks) {
-	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node, recv, id, klass);
+	    EXEC_EVENT_HOOK(RUBY_EVENT_RETURN,
+                            ruby_current_node, recv, id, klass);
 	}
 	break;
 
@@ -6133,8 +6133,9 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 
 		    i = node->nd_cnt;
 		    if (i > argc) {
-			rb_raise(rb_eArgError, "wrong number of arguments (%d for %d)",
-				 argc, i);
+			rb_raise(rb_eArgError, 
+                                 "wrong number of arguments (%d for %d)",
+                                 argc, i);
 		    }
 		    if (!node->nd_rest) {
 			NODE *optnode = node->nd_opt;
@@ -9702,7 +9703,7 @@ method_call(argc, argv, method)
     VALUE *argv;
     VALUE method;
 {
-    VALUE result = Qnil;	/* OK */
+    VALUE result;
     struct METHOD *data;
     int safe;
 
@@ -9997,12 +9998,9 @@ static VALUE
 bmcall(args, method)
     VALUE args, method;
 {
-    volatile VALUE a;
-    VALUE ret;
-
-    a = svalue_to_avalue(args);
-    ret = method_call(RARRAY(a)->len, RARRAY(a)->ptr, method);
-    a = Qnil; /* prevent tail call */
+    VALUE a = svalue_to_avalue(args);
+    VALUE ret = method_call(RARRAY(a)->len, RARRAY(a)->ptr, method);
+    RB_GC_GUARD(a);  /* ensure a is not GC'd during method_call */
     return ret;
 }
 
