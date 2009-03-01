@@ -232,7 +232,7 @@ static VALUE proc_invoke _((VALUE,VALUE,VALUE,VALUE));
 static VALUE rb_f_binding _((VALUE));
 NOINLINE(static void rb_f_END _((void)));
 static VALUE rb_f_block_given_p _((void));
-static VALUE block_pass _((volatile VALUE, volatile NODE *));
+static VALUE block_pass _((volatile VALUE, NODE *volatile));
 static void eval_check_tick _((void));
 
 VALUE rb_cMethod;
@@ -1606,12 +1606,13 @@ ruby_finalize()
 }
 
 int
-ruby_cleanup(ex)
-    volatile int ex;
+ruby_cleanup(exArg)
+    int exArg;
 {
     int state;
     volatile VALUE errs[2];
     unsigned nerr;
+    volatile int ex = exArg;
 
     errs[1] = ruby_errinfo;
     ruby_safe_level = 0;
@@ -3009,8 +3010,9 @@ eval_node_volatile(opt_n, void)
   int state;
   PUSH_TAG(PROT_LOOP);
   switch (state = EXEC_TAG()) {
+    case TAG_NEXT:
+      state = 0;
     case 0:
-    opt_n_next:
       while (!NIL_P(rb_gets())) {
 	opt_n_redo:
 	  rb_eval(self, node->nd_body);
@@ -3020,9 +3022,7 @@ eval_node_volatile(opt_n, void)
     case TAG_REDO:
       state = 0;
       goto opt_n_redo;
-    case TAG_NEXT:
-      state = 0;
-      goto opt_n_next;
+
     case TAG_BREAK:
       state = 0;
     default:
@@ -5973,7 +5973,7 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
     NODE *body;
     int flags;
 {
-    NODE *b2;		/* OK */
+    NODE *b2;
     VALUE result;
     int itr;
     TMP_PROTECT;
@@ -7121,10 +7121,10 @@ rb_load(fname, wrap)
     VALUE tmp;
     int state;
     volatile int prohibit_int = rb_prohibit_interrupt;
-    ID last_func;
+    volatile ID last_func;
     volatile VALUE wrapper = ruby_wrapper;
     VALUE self = ruby_top_self;
-    NODE *last_node;
+    NODE *volatile last_node;
     NODE *volatile saved_cref = ruby_cref;
 
     if (wrap && ruby_safe_level >= 4) {
@@ -9282,7 +9282,7 @@ proc_binding(proc)
 static VALUE
 block_pass(self, node)
     volatile VALUE self;
-    volatile NODE *node;
+    NODE *volatile node;
 {
     volatile VALUE proc = rb_eval(self, node->nd_body);
     VALUE b;
