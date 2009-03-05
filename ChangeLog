@@ -1665,6 +1665,12 @@ Mon Mar  9 08:54:47 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 	* parse.y (IS_BEG): EXPR_CLASS should be treated like EXPR_BEG.
 	  [ruby-core:21453]
 
+Wed Mar 4 12:01:19 2009  Brent Roman  <brent@mbari.org>
+        
+        * rubysig.h:  assume non-Apple gcc on PowerPC is not using -mregnames
+        
+        * version.h:  bumped date
+        
 Wed Mar 1 12:01:19 2009  Brent Roman  <brent@mbari.org>
         
         * eval.c:  fixed missed volatile qualifiers
