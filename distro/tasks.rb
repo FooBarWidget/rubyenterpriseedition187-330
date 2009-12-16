@@ -133,7 +133,11 @@ task :test_installer do
 	distdir = "/tmp/r8ee-test"
 	create_distdir(distdir)
 	sh "ln -sf `pwd`/distro/installer.rb #{distdir}/installer.rb"
-	sh "#{distdir}/installer #{ENV['ARGS']}"
+	command = "#{distdir}/installer --no-docs #{ENV['ARGS']}"
+	if ENV['SUDO']
+		command = "sudo #{command}"
+	end
+	sh command
 end
 
 desc "Auto-install into a fake root directory"
