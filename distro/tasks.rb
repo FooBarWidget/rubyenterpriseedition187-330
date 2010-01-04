@@ -21,9 +21,6 @@ def create_fakeroot
 	sh "mkdir fakeroot"
 	fakeroot = File.expand_path("fakeroot")
 	sh "#{distdir}/installer --auto='/usr/local' --destdir='#{fakeroot}' #{ENV['ARGS']}"
-	each_elf_binary(fakeroot) do |filename|
-		sh "strip --strip-debug '#{filename}'"
-	end
 	puts "*** Ruby Enterprise Edition has been installed to #{fakeroot}"
 end
 
@@ -50,8 +47,12 @@ def download(url)
 	end
 end
 
-def create_distdir(distdir = DISTDIR)
-	sh "rm -rf #{distdir}"
+def create_distdir(distdir = DISTDIR, sudo = false)
+	if sudo
+		sh "sudo rm -rf #{distdir}"
+	else
+		sh "rm -rf #{distdir}"
+	end
 	sh "mkdir #{distdir}"
 	
 	sh "mkdir #{distdir}/source"
@@ -84,26 +85,6 @@ def create_distdir(distdir = DISTDIR)
 	end
 end
 
-# Returns whether the given filename is an ELF binary.
-def elf_binary?(filename)
-	if File.executable?(filename)
-		return File.read(filename, 4) == "\177ELF"
-	else
-		return false
-	end
-end
-
-# Iterates through each ELF binary file in the given directory.
-def each_elf_binary(dir, &block)
-	Dir["#{dir}/*"].each do |filename|
-		if File.directory?(filename)
-			each_elf_binary(filename, &block)
-		elsif elf_binary?(filename)
-			block.call(filename)
-		end
-	end
-end
-
 # Returns the disk usage of the given directory, in KB.
 def disk_usage(dir)
 	if RUBY_PLATFORM =~ /linux/
@@ -131,7 +112,7 @@ end
 desc "Test the installer script. Pass extra arguments to the installer with ARGS."
 task :test_installer do
 	distdir = "/tmp/r8ee-test"
-	create_distdir(distdir)
+	create_distdir(distdir, ENV['SUDO'])
 	sh "ln -sf `pwd`/distro/installer.rb #{distdir}/installer.rb"
 	command = "#{distdir}/installer --no-docs #{ENV['ARGS']}"
 	if ENV['SUDO']
