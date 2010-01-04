@@ -232,7 +232,8 @@ static VALUE proc_invoke _((VALUE,VALUE,VALUE,VALUE));
 static VALUE rb_f_binding _((VALUE));
 NOINLINE(static void rb_f_END _((void)));
 static VALUE rb_f_block_given_p _((void));
-static VALUE block_pass _((VALUE, NODE *));
+static VALUE block_pass _((VALUE,NODE*));
+static void eval_check_tick _((void));
 
 VALUE rb_cMethod;
 static VALUE method_call _((int, VALUE*, VALUE));
@@ -393,7 +394,8 @@ rb_clear_cache_for_undef(klass, id)
     ent = cache; end = ent + CACHE_SIZE;
     while (ent < end) {
 	if (ent->mid == id &&
-	    RCLASS(ent->origin)->m_tbl == RCLASS(klass)->m_tbl) {
+	    (ent->klass == klass ||
+	     RCLASS(ent->origin)->m_tbl == RCLASS(klass)->m_tbl)) {
 	    ent->mid = 0;
 	}
 	ent++;
@@ -1439,7 +1441,7 @@ ruby_init()
 	rb_call_inits();
 	ruby_class = rb_cObject;
 	ruby_frame->self = ruby_top_self;
-	ruby_top_cref = rb_node_newnode(NODE_CREF,rb_cObject,0,0);
+	ruby_top_cref = NEW_CREF(rb_cObject, 0);
 	ruby_cref = ruby_top_cref;
 	rb_define_global_const("TOPLEVEL_BINDING", rb_f_binding(ruby_top_self));
 #ifdef __MACOS__
@@ -3846,7 +3848,7 @@ rb_eval(self, node)
   VALUE result;
 
 again:
-  CHECK_INTS;
+  eval_check_tick();
   result = Qnil;
   if (node) {
     ruby_current_node = node;
@@ -4801,6 +4803,7 @@ void
 rb_exc_raise(mesg)
     VALUE mesg;
 {
+    mesg = rb_make_exception(1, &mesg);
     rb_longjmp(TAG_RAISE, mesg);
 }
 
@@ -4808,6 +4811,7 @@ void
 rb_exc_fatal(mesg)
     VALUE mesg;
 {
+    mesg = rb_make_exception(1, &mesg);
     rb_longjmp(TAG_FATAL, mesg);
 }
 
@@ -5743,6 +5747,17 @@ stack_check()
     }
 }
 
+static void
+eval_check_tick()
+{
+    static int tick;
+    if ((++tick & 0xff) == 0) {
+	CHECK_INTS;		/* better than nothing */
+	stack_check();
+	rb_gc_finalize_deferred();
+    }
+}
+
 static int last_call_status;
 
 #define CSTAT_PRIV  1
@@ -5810,7 +5825,7 @@ rb_method_missing(argc, argv, obj)
 	exc = rb_eNameError;
     }
     else if (last_call_status & CSTAT_SUPER) {
-	format = "super: no superclass method `%s'";
+	format = "super: no superclass method `%s' for %s";
     }
     if (!format) {
 	format = "undefined method `%s' for %s";
@@ -5974,7 +5989,6 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
     NODE *b2;		/* OK */
     VALUE result;
     int itr;
-    static int tick;
     TMP_PROTECT;
     volatile int safe = -1;
 
@@ -5993,11 +6007,7 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 	break;
     }
 
-    if ((++tick & 0xff) == 0) {
-	CHECK_INTS;		/* better than nothing */
-	stack_check();
-	rb_gc_finalize_deferred();
-    }
+    eval_check_tick();
     if (argc < 0) {
 	VALUE tmp;
 	VALUE *nargv;
@@ -6263,13 +6273,14 @@ rb_call(klass, recv, mid, argc, argv, scope, self)
     ent = cache + EXPR1(klass, mid);
     if (ent->mid == mid && ent->klass == klass) {
 	if (!ent->method)
-	    return method_missing(recv, mid, argc, argv, scope==2?CSTAT_VCALL:0);
+	    goto nomethod;
 	klass = ent->origin;
 	id    = ent->mid0;
 	noex  = ent->noex;
 	body  = ent->method;
     }
     else if ((body = rb_get_method_body(&klass, &id, &noex)) == 0) {
+      nomethod:
 	if (scope == 3) {
 	    return method_missing(recv, mid, argc, argv, CSTAT_SUPER);
 	}
@@ -6735,14 +6746,22 @@ eval(self, src, scope, file, line)
 	if (state == TAG_RAISE) {
 	    if (strcmp(file, "(eval)") == 0) {
 		VALUE mesg, errat, bt2;
+		ID id_mesg;
 
+		id_mesg = rb_intern("mesg");
 		errat = get_backtrace(ruby_errinfo);
-		mesg = rb_attr_get(ruby_errinfo, rb_intern("mesg"));
+		mesg = rb_attr_get(ruby_errinfo, id_mesg);
 		if (!NIL_P(errat) && TYPE(errat) == T_ARRAY &&
 		    (bt2 = backtrace(-2), RARRAY_LEN(bt2) > 0)) {
 		    if (!NIL_P(mesg) && TYPE(mesg) == T_STRING) {
-			rb_str_update(mesg, 0, 0, rb_str_new2(": "));
-			rb_str_update(mesg, 0, 0, RARRAY_PTR(errat)[0]);
+			if (OBJ_FROZEN(mesg)) {
+			    VALUE m = rb_str_cat(rb_str_dup(RARRAY_PTR(errat)[0]), ": ", 2);
+			    rb_ivar_set(ruby_errinfo, id_mesg, rb_str_append(m, mesg));
+			}
+			else {
+			    rb_str_update(mesg, 0, 0, rb_str_new2(": "));
+			    rb_str_update(mesg, 0, 0, RARRAY_PTR(errat)[0]);
+			}
 		    }
 		    RARRAY_PTR(errat)[0] = RARRAY_PTR(bt2)[0];
 		}
@@ -8985,7 +9004,8 @@ proc_invoke(proc, args, self, klass)
     _block = *data;
     _block.block_obj = bvar;
     if (self != Qundef) _block.frame.self = self;
-    if (klass) _block.frame.last_class = klass;
+    _block.frame.last_class = klass;
+    if (!klass) _block.frame.last_func = 0;
     _block.frame.argc = RARRAY(tmp)->len;
     _block.frame.flags = ruby_frame->flags;
     if (_block.frame.argc && DMETHOD_P()) {
@@ -8993,7 +9013,7 @@ proc_invoke(proc, args, self, klass)
         OBJSETUP(scope, tmp, T_SCOPE);
         scope->local_tbl = _block.scope->local_tbl;
         scope->local_vars = _block.scope->local_vars;
-        scope->flags |= SCOPE_CLONE;
+        scope->flags |= SCOPE_CLONE | (_block.scope->flags & SCOPE_MALLOC);
         _block.scope = scope;
     }
     /* modify current frame */
@@ -9391,8 +9411,8 @@ mnew(klass, obj, id, mklass)
     ID oid = id;
 
   again:
-    if ((body = rb_get_method_body(&klass, &id, &noex)) == 0) {
-	print_undef(rklass, oid);
+    if ((body = rb_get_method_body(&klass, &oid, &noex)) == 0) {
+	print_undef(rklass, id);
     }
 
     if (nd_type(body) == NODE_ZSUPER) {
@@ -9533,7 +9553,7 @@ method_name(obj)
     struct METHOD *data;
 
     Data_Get_Struct(obj, struct METHOD, data);
-    return rb_str_new2(rb_id2name(data->oid));
+    return rb_str_new2(rb_id2name(data->id));
 }
 
 /*
@@ -9959,7 +9979,7 @@ method_inspect(method)
 	}
     }
     rb_str_buf_cat2(str, sharp);
-    rb_str_buf_cat2(str, rb_id2name(data->oid));
+    rb_str_buf_cat2(str, rb_id2name(data->id));
     rb_str_buf_cat2(str, ">");
 
     return str;
@@ -10452,6 +10472,7 @@ extern VALUE rb_last_status;
 #define WAIT_TIME	(1<<2)
 #define WAIT_JOIN	(1<<3)
 #define WAIT_PID	(1<<4)
+#define WAIT_DONE	(1<<5)
 
 /* +infty, for this purpose */
 #define DELAY_INFTY 1E30
@@ -11131,6 +11152,13 @@ rb_thread_remove(th)
     rb_thread_die(th);
     th->prev->next = th->next;
     th->next->prev = th->prev;
+
+#if defined(_THREAD_SAFE) || defined(HAVE_SETITIMER)
+    /* if this is the last ruby thread, stop timer signals */
+    if (th->next == th->prev && th->next == main_thread) {
+	rb_thread_stop_timer();
+    }
+#endif
 }
 
 static int
@@ -11261,7 +11289,6 @@ rb_thread_schedule()
     rb_thread_t next;		/* OK */
     rb_thread_t th;
     rb_thread_t curr;
-    rb_thread_t th_found = 0;
     int found = 0;
 
     fd_set readfds;
@@ -11300,6 +11327,7 @@ rb_thread_schedule()
     now = -1.0;
 
     FOREACH_THREAD_FROM(curr, th) {
+        th->wait_for &= ~WAIT_DONE;
 	if (!found && th->status <= THREAD_RUNNABLE) {
 	    found = 1;
 	}
@@ -11332,7 +11360,12 @@ rb_thread_schedule()
 	    if (now < 0.0) now = timeofday();
 	    th_delay = th->delay - now;
 	    if (th_delay <= 0.0) {
-		th->status = THREAD_RUNNABLE;
+                if (th->wait_for & WAIT_SELECT) {
+                    need_select = 1;
+                }
+                else {
+                    th->status = THREAD_RUNNABLE;
+                }
 		found = 1;
 	    }
 	    else if (th_delay < delay) {
@@ -11451,22 +11484,22 @@ rb_thread_schedule()
 	if (n > 0) {
 	    now = -1.0;
 	    /* Some descriptors are ready.
-             * Choose a thread which may run next.
-             * Don't change the status of threads which don't run next.
+             * The corresponding threads are runnable as next.
+             * Mark them with WAIT_DONE.
+             * Don't change the status to runnable here because
+             * threads which don't run next should not be changed.
              */
 	    FOREACH_THREAD_FROM(curr, th) {
 		if ((th->wait_for&WAIT_FD) && FD_ISSET(th->fd, &readfds)) {
-                    th_found = th;
+                    th->wait_for |= WAIT_DONE;
 		    found = 1;
-                    break;
 		}
 		if ((th->wait_for&WAIT_SELECT) &&
 		    (match_fds(&readfds, &th->readfds, max) ||
 		     match_fds(&writefds, &th->writefds, max) ||
 		     match_fds(&exceptfds, &th->exceptfds, max))) {
-                    th_found = th;
+                    th->wait_for |= WAIT_DONE;
                     found = 1;
-                    break;
 		}
 	    }
 	    END_FOREACH_FROM(curr, th);
@@ -11482,26 +11515,27 @@ rb_thread_schedule()
 	    next = th;
 	    break;
 	}
-	if ((th->status == THREAD_RUNNABLE || th == th_found) && th->stk_ptr) {
+	if ((th->status == THREAD_RUNNABLE || (th->wait_for & WAIT_DONE)) && th->stk_ptr) {
 	    if (!next || next->priority < th->priority) {
-                if (th == th_found) {
-                    th_found->status = THREAD_RUNNABLE;
-                    th_found->wait_for = 0;
-                    if (th->wait_for&WAIT_FD) {
-                        th_found->fd = 0;
-                    }
-                    else { /* th->wait_for&WAIT_SELECT */
-                        n = intersect_fds(&readfds, &th_found->readfds, max) +
-                            intersect_fds(&writefds, &th_found->writefds, max) +
-                            intersect_fds(&exceptfds, &th_found->exceptfds, max);
-                        th_found->select_value = n;
-                    }
-                }
 	        next = th;
             }
 	}
     }
     END_FOREACH_FROM(curr, th);
+
+    if (next && (next->wait_for & WAIT_DONE)) {
+        next->status = THREAD_RUNNABLE;
+        if (next->wait_for&WAIT_FD) {
+            next->fd = 0;
+        }
+        else { /* next->wait_for&WAIT_SELECT */
+            n = intersect_fds(&readfds, &next->readfds, max) +
+                intersect_fds(&writefds, &next->writefds, max) +
+                intersect_fds(&exceptfds, &next->exceptfds, max);
+            next->select_value = n;
+        }
+        next->wait_for = 0;
+    }
 
     if (!next) {
 	/* raise fatal error to main thread */
@@ -11512,15 +11546,16 @@ rb_thread_schedule()
 	    TRAP_END;
 	}
 	FOREACH_THREAD_FROM(curr, th) {
+            int wait_for = th->wait_for & ~WAIT_DONE;
 	    warn_printf("deadlock 0x%lx: %s:",
 			th->thread, thread_status_name(th->status));
-	    if (th->wait_for & WAIT_FD) warn_printf("F(%d)", th->fd);
-	    if (th->wait_for & WAIT_SELECT) warn_printf("S");
-	    if (th->wait_for & WAIT_TIME) warn_printf("T(%f)", th->delay);
-	    if (th->wait_for & WAIT_JOIN)
+	    if (wait_for & WAIT_FD) warn_printf("F(%d)", th->fd);
+	    if (wait_for & WAIT_SELECT) warn_printf("S");
+	    if (wait_for & WAIT_TIME) warn_printf("T(%f)", th->delay);
+	    if (wait_for & WAIT_JOIN)
 		warn_printf("J(0x%lx)", th->join ? th->join->thread : 0);
-	    if (th->wait_for & WAIT_PID) warn_printf("P");
-	    if (!th->wait_for) warn_printf("-");
+	    if (wait_for & WAIT_PID) warn_printf("P");
+	    if (!wait_for) warn_printf("-");
 	    warn_printf(" %s - %s:%d\n",
 			th==main_thread ? "(main)" : "",
 			th->node->nd_file, nd_line(th->node));
@@ -12489,6 +12524,12 @@ rb_thread_alloc(klass)
 
 static int thread_init;
 
+#if defined(POSIX_SIGNAL)
+#define CATCH_VTALRM() posix_signal(SIGVTALRM, catch_timer)
+#else
+#define CATCH_VTALRM() signal(SIGVTALRM, catch_timer)
+#endif
+
 #if defined(_THREAD_SAFE)
 static void
 catch_timer(sig)
@@ -12500,30 +12541,58 @@ catch_timer(sig)
     /* cause EINTR */
 }
 
-static pthread_t time_thread;
+#define PER_NANO 1000000000
+
+static struct timespec *
+get_ts(struct timespec *to, long ns)
+{
+    struct timeval tv;
+
+#ifdef CLOCK_REALTIME
+    if (clock_gettime(CLOCK_REALTIME, to) != 0)
+#endif
+    {
+	gettimeofday(&tv, NULL);
+	to->tv_sec = tv.tv_sec;
+	to->tv_nsec = tv.tv_usec * 1000;
+    }
+    if ((to->tv_nsec += ns) >= PER_NANO) {
+	to->tv_sec += to->tv_nsec / PER_NANO;
+	to->tv_nsec %= PER_NANO;
+    }
+    return to;
+}
+
+static struct timer_thread {
+    pthread_cond_t cond;
+    pthread_mutex_t lock;
+    pthread_t thread;
+} time_thread = {PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
+
+#define safe_mutex_lock(lock) \
+    pthread_mutex_lock(lock); \
+    pthread_cleanup_push((void (*)_((void *)))pthread_mutex_unlock, lock)
 
 static void*
 thread_timer(dummy)
     void *dummy;
 {
+    struct timer_thread *running = ((void **)dummy)[0];
+    pthread_cond_t *start = ((void **)dummy)[1];
+    struct timespec to;
+    int err;
+
     sigset_t all_signals;
 
     sigfillset(&all_signals);
     pthread_sigmask(SIG_BLOCK, &all_signals, 0);
 
-    for (;;) {
-#ifdef HAVE_NANOSLEEP
-	struct timespec req, rem;
+    safe_mutex_lock(&running->lock);
+    pthread_cond_signal(start);
 
-	req.tv_sec = 0;
-	req.tv_nsec = 10000000;
-	nanosleep(&req, &rem);
-#else
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 10000;
-	select(0, NULL, NULL, NULL, &tv);
-#endif
+#define WAIT_FOR_10MS() \
+    pthread_cond_timedwait(&running->cond, &running->lock, get_ts(&to, PER_NANO/100))
+    while ((err = WAIT_FOR_10MS()) == EINTR || err == ETIMEDOUT) {
 	if (!rb_thread_critical) {
 	    rb_thread_pending = 1;
 	    if (rb_trap_immediate) {
@@ -12531,16 +12600,41 @@ thread_timer(dummy)
 	    }
 	}
     }
+
+    pthread_cleanup_pop(1);
+
+    return NULL;
 }
 
 void
 rb_thread_start_timer()
 {
+    void *args[2];
+    static pthread_cond_t start = PTHREAD_COND_INITIALIZER;
+
+    if (thread_init) return;
+    if (rb_thread_alone()) return;
+    CATCH_VTALRM();
+    args[0] = &time_thread;
+    args[1] = &start;
+    safe_mutex_lock(&time_thread.lock);
+    if (pthread_create(&time_thread.thread, 0, thread_timer, args) == 0) {
+	thread_init = 1;
+	pthread_atfork(0, 0, rb_thread_stop_timer);
+	pthread_cond_wait(&start, &time_thread.lock);
+    }
+    pthread_cleanup_pop(1);
 }
 
 void
 rb_thread_stop_timer()
 {
+    if (!thread_init) return;
+    safe_mutex_lock(&time_thread.lock);
+    pthread_cond_signal(&time_thread.cond);
+    thread_init = 0;
+    pthread_cleanup_pop(1);
+    pthread_join(time_thread.thread, NULL);
 }
 #elif defined(HAVE_SETITIMER)
 static void
@@ -12561,11 +12655,14 @@ rb_thread_start_timer()
 {
     struct itimerval tval;
 
-    if (!thread_init) return;
+    if (thread_init) return;
+    if (rb_thread_alone()) return;
+    CATCH_VTALRM();
     tval.it_interval.tv_sec = 0;
     tval.it_interval.tv_usec = 10000;
     tval.it_value = tval.it_interval;
     setitimer(ITIMER_VIRTUAL, &tval, NULL);
+    thread_init = 1;
 }
 
 void
@@ -12578,9 +12675,18 @@ rb_thread_stop_timer()
     tval.it_interval.tv_usec = 0;
     tval.it_value = tval.it_interval;
     setitimer(ITIMER_VIRTUAL, &tval, NULL);
+    thread_init = 0;
 }
 #else  /* !(_THREAD_SAFE || HAVE_SETITIMER) */
 int rb_thread_tick = THREAD_TICK;
+#endif
+
+#if defined(HAVE_SETITIMER) || defined(_THREAD_SAFE)
+#define START_TIMER() (thread_init ? (void)0 : rb_thread_start_timer())
+#define STOP_TIMER() (rb_thread_stop_timer())
+#else
+#define START_TIMER() ((void)0)
+#define STOP_TIMER() ((void)0)
 #endif
 
 static VALUE
@@ -12598,23 +12704,6 @@ rb_thread_start_0(fn, arg, th)
     if (OBJ_FROZEN(curr_thread->thgroup)) {
 	rb_raise(rb_eThreadError,
 		 "can't start a new thread (frozen ThreadGroup)");
-    }
-
-    if (!thread_init) {
-	thread_init = 1;
-#if defined(HAVE_SETITIMER) || defined(_THREAD_SAFE)
-#if defined(POSIX_SIGNAL)
-	posix_signal(SIGVTALRM, catch_timer);
-#else
-	signal(SIGVTALRM, catch_timer);
-#endif
-
-#ifdef _THREAD_SAFE
-	pthread_create(&time_thread, 0, thread_timer, 0);
-#else
-	rb_thread_start_timer();
-#endif
-#endif
     }
 
     if (THREAD_SAVE_CONTEXT(curr_thread)) {
@@ -12639,6 +12728,7 @@ rb_thread_start_0(fn, arg, th)
 	th->priority = curr_thread->priority;
 	th->thgroup = curr_thread->thgroup;
     }
+    START_TIMER();
 
     PUSH_TAG(PROT_THREAD);
     if ((state = EXEC_TAG()) == 0) {
@@ -13364,6 +13454,7 @@ rb_thread_atfork()
     main_thread = curr_thread;
     curr_thread->next = curr_thread;
     curr_thread->prev = curr_thread;
+    STOP_TIMER();
 }
 
 static inline void
