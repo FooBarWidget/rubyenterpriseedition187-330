@@ -56,10 +56,14 @@ If you experience problems with the tcmalloc memory allocator, then you can
 install REE without tcmalloc by passing `--no-tcmalloc` to the installer.
 
 ===== Non-interactive installation
-You can installer REE non-interactively either by using the Debian package,
+You can install REE non-interactively either by using the Debian package,
 or by passing `--auto=DIRECTORY` to the REE installer. The latter will
 instruct the installer to non-interactively install REE into the specified
 target directory.
+
+===== More options
+You can read about all of the available installation options by passing
+`--help` to the REE installer.
 
 === Manual installation (for experts)
 If you wish to install REE from source, but do not wish to use the included
