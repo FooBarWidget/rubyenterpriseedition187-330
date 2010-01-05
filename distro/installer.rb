@@ -50,7 +50,7 @@ class Installer
 		  :compile_system_allocator,
 		  :compile_ruby,
 		  :install_ruby]
-		steps += [:install_rdoc] if options[:install_docs]
+		steps += [:install_dev_docs] if options[:install_dev_docs]
 		steps += [
 		  :install_ree_specific_binaries,
 		  :install_rubygems,
@@ -339,10 +339,10 @@ private
 		return true
 	end
 
-	def install_rdoc
+	def install_dev_docs
 		Dir.chdir("source") do
 			color_puts "<banner>Installing developer documentation...</banner>"
-			if !system("make", "install-doc")
+			if !system("make install-doc DESTDIR='#{@destdir}'")
 				return false
 			end
 		end
@@ -615,7 +615,7 @@ private
 	end
 end
 
-options = { :tcmalloc => true, :install_docs => true, :install_useful_gems => true, :extra_configure_args => [] }
+options = { :tcmalloc => true, :install_dev_docs => true, :install_useful_gems => true, :extra_configure_args => [] }
 parser = OptionParser.new do |opts|
 	newline = "\n#{' ' * 37}"
 	
@@ -649,8 +649,8 @@ parser = OptionParser.new do |opts|
 	opts.on("--no-tcmalloc", "Do not install tcmalloc support.") do
 		options[:tcmalloc] = false
 	end
-	opts.on("--no-docs", "Do not install Ruby development#{newline}documentation.") do
-		options[:install_docs] = false
+	opts.on("--no-dev-docs", "Do not install Ruby developer#{newline}documentation.") do
+		options[:install_dev_docs] = false
 	end
 	opts.on("--fast-threading", "Enable zero-copy context switching#{newline}" <<
 	                            "(experimental)") do

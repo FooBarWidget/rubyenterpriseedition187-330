@@ -114,7 +114,7 @@ task :test_installer do
 	distdir = "/tmp/r8ee-test"
 	create_distdir(distdir, ENV['SUDO'])
 	sh "ln -sf `pwd`/distro/installer.rb #{distdir}/installer.rb"
-	command = "#{distdir}/installer --no-docs #{ENV['ARGS']}"
+	command = "#{distdir}/installer --no-dev-docs #{ENV['ARGS']}"
 	if ENV['SUDO']
 		command = "sudo #{command}"
 	end
