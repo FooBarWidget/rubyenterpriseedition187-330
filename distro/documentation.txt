@@ -106,7 +106,23 @@ Please note that the rest of this document assumes that REE is installed into
 '/opt/ruby-enterprise'. If you installed REE into a different directory then just
 replace '/opt/ruby-enterprise' with whatever the real prefix is.
 
-==== Step 3: Install tcmalloc
+==== Step 3: Apply or unapply the (experimental) fast threading patch
+The fast threading patch potentially improves Ruby threading performance, but it's
+experimental at this time. By default, the patch is applied on the source code
+provided in the tarball; the installer however does not install fast threading by
+default by reverse-patching the source code.
+
+If you want to install REE with the fast threading patch, then you can continue to
+step 4. If you do not want to install with the fast threading patch, then you must
+first reverse-patch the source code as follows:
+
+------------------------------
+cd ruby-enterprise-x.x.x/source
+patch -p1 -R < ../fast-threading.patch
+cd ../..
+------------------------------
+
+==== Step 4: Install tcmalloc
 Tcmalloc is a memory allocator which is usually more efficient than the
 platform's native memory allocator. REE doesn't require tcmalloc, but it will
 work better if tcmalloc is installed.
@@ -119,7 +135,7 @@ cd ruby-enterprise-x.x.x/source/distro/google-perftools-*
 make libtcmalloc_minimal.la
 --------------------------
 
-If compilation fails, then skip to step 3. REE will work fine without tcmalloc.
+If compilation fails, then skip to step 5. REE will work fine without tcmalloc.
 
 After compilation, install tcmalloc as follows:
 
@@ -138,7 +154,7 @@ NOTE: The reason why we don't instruct you to type 'make' and 'make install'
       platforms. The above instructions are a little bit more complex, but they
       work on all platforms where tcmalloc is supported.
 
-==== Step 4: Configure REE
+==== Step 5: Configure REE
 
 Change the current working directory to 'ruby-enterprise-x.x.x/source'. If
 you were previously in the google-perftools directory, then type:
@@ -150,10 +166,10 @@ cd ../..
 Run the configure script:
 
 --------------------------
-./configure --prefix=$PREFIX --enable-mbari-api CFLAGS='-g -Os -fno-strict-aliasing'
+./configure --prefix=$PREFIX --enable-mbari-api CFLAGS='-g -O2'
 --------------------------
 
-==== Step 5: Compiling and installing the system_allocator library (MacOS X only)
+==== Step 6: Compiling and installing the system_allocator library (MacOS X only)
 
 If you are on MacOS X, then compile and install the 'system_allocator' library:
 
@@ -162,7 +178,7 @@ gcc -dynamiclib system_allocator.c -install_name @rpath/libsystem_allocator.dyli
 sudo install libsystem_allocator.dylib $PREFIX/lib/
 --------------------------
 
-==== Step 6: compiling and installing REE
+==== Step 7: compiling and installing REE
 
 Open 'Makefile'. Search for a line which starts with:
 
