@@ -145,6 +145,27 @@ module Dependencies # :nodoc: all
 		dep.website = "http://www.gnu.org/software/make/"
 	end
 	
+	Patch = Dependency.new do |dep|
+		dep.name = "The 'patch' tool"
+		dep.define_checker do |result|
+			patch = PlatformInfo.find_command('patch')
+			if patch
+				result.found(patch)
+			else
+				result.not_found
+			end
+		end
+		if RUBY_PLATFORM =~ /linux/
+			case LINUX_DISTRO
+			when :ubuntu, :debian
+				dep.install_command = "apt-get install patch"
+			when :rhel, :fedora, :centos
+				dep.install_command = "yum install patch"
+			end
+		end
+		dep.website = "http://www.gnu.org/software/diffutils/"
+	end
+	
 	Zlib_Dev = Dependency.new do |dep|
 		dep.name = "Zlib development headers"
 		dep.define_checker do |result|

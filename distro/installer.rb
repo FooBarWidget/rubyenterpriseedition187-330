@@ -12,6 +12,7 @@ class Installer
 		Dependencies::CC,
 		Dependencies::CXX,
 		Dependencies::Make,
+		Dependencies::Patch,
 		Dependencies::Zlib_Dev,
 		Dependencies::OpenSSL_Dev,
 		Dependencies::Readline_Dev
