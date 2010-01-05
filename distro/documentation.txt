@@ -122,6 +122,9 @@ patch -p1 -R < ../fast-threading.patch
 cd ../..
 ------------------------------
 
+Please note that the fast threading patch only works on x86 and x86_64. On other
+architectures it will result in a compilation failure.
+
 ==== Step 4: Install tcmalloc
 Tcmalloc is a memory allocator which is usually more efficient than the
 platform's native memory allocator. REE doesn't require tcmalloc, but it will
