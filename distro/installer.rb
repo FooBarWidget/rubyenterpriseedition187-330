@@ -267,6 +267,11 @@ private
 			if platform_uses_two_level_namespace_for_dynamic_libraries?
 				prelibs << " -lsystem_allocator"
 			end
+			File.open("make.sh", "w") do |f|
+				f.write("#!/bin/bash")
+				f.write("exec make PRELIBS='#{prelibs}' \"$@\"")
+				f.chmod(0755)
+			end
 			return sh("make PRELIBS='#{prelibs}'")
 		end
 	end
