@@ -9,6 +9,7 @@ class Installer
 	PASSENGER_WEBSITE = "http://www.modrails.com"
 	EMM_RUBY_WEBSITE = "http://www.rubyenterpriseedition.com"
 	REQUIRED_DEPENDENCIES = [
+		# Don't forget to update the dependency list in the manual too.
 		Dependencies::CC,
 		Dependencies::CXX,
 		Dependencies::Make,

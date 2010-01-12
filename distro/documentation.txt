@@ -77,10 +77,12 @@ Note that these instructions do not cover installing RubyGems.
 You need to have the following dependencies installed:
 
 1. A C and C++ compiler, preferrably gcc.
-2. C development headers for zlib.
-3. C development headers for OpenSSL.
-4. C development headers for GNU Readline.
-5. yacc or bison.
+2. The 'make' tool.
+3. The 'patch' tool.
+4. C development headers for zlib.
+5. C development headers for OpenSSL.
+6. C development headers for GNU Readline.
+7. yacc or bison.
 
 ==== Step 1: Download and extract the source tarball
 Type:
@@ -259,7 +261,7 @@ parallel to the system Ruby interpreter. This also means that:
   set of commands. If you install a new gem using the system Ruby interpreter,
   then that gem will not show up in REE's gem list, and vice versa.
 - When running Ruby programs, the system Ruby interpreter will be used unless
-  you explicitly configures the system to use REE by default.
+  you explicitly configure the system to use REE by default.
 
 ==== Why doesn't REE use the system Ruby interpreter's gems?
 REE does not use the system Ruby interpreter's gems because it can cause
