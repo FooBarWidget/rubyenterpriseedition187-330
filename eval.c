@@ -12758,7 +12758,7 @@ rb_thread_start_2()
    struct BLOCK *volatile saved_block = 0;
    enum rb_thread_status status;
    int state;
-   struct tag *tag;
+   struct tag *tag, *new_tag, *prev_tag;
    struct RVarmap *vars;
    struct FRAME dummy_frame;
 
@@ -12787,9 +12787,22 @@ rb_thread_start_2()
     START_TIMER();
 
     scope_dup(ruby_scope);
+    prev_tag = NULL;
+    tag = prot_tag;
+    while (tag) {
+	new_tag = alloca(sizeof(struct tag));
+	memcpy(new_tag, tag, sizeof(struct tag));
+	
+	if (prev_tag)
+	    prev_tag->prev = new_tag;
+	else
+	    prot_tag = new_tag;
+	
+	prev_tag = new_tag;
+	tag = tag->prev;
+    }
 
     PUSH_TAG(PROT_THREAD);
-    prot_tag->prev = NULL;
     if ((state = EXEC_TAG()) == 0) {
 	if (THREAD_SAVE_CONTEXT(th) == 0) {
 	    th->result = (*new_th.fn)(new_th.arg, th);
