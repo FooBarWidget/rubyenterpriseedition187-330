@@ -269,7 +269,7 @@ private
 				prelibs << " -lsystem_allocator"
 			end
 			File.open("make.sh", "w") do |f|
-				f.write("#!/bin/bash")
+				f.write("#!/bin/bash\n")
 				f.write("exec make PRELIBS='#{prelibs}' \"$@\"")
 				f.chmod(0755)
 			end
