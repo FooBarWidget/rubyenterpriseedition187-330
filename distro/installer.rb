@@ -330,10 +330,20 @@ private
 		# On some systems, most notably FreeBSD, the iconv extension isn't
 		# correctly installed. So here we do it manually.
 		Dir.chdir('source/ext/iconv') do
-			# 'make clean' must be run, because sometimes 'make'
-			# thinks iconv.so is already compiled even though it
-			# isn't.
-			if !sh("#{@destdir}#{@prefix}/bin/ruby", "extconf.rb") ||
+			# On FreeBSD, iconv.h is in /usr/local/include when installed
+			# via ports. For some reason they thought it's a good idea
+			# to not have GCC look in /usr/local/include by default.
+			# *Sigh*, let's fix this.
+			if !File.exist?("/usr/include/iconv.h") && File.exist?("/usr/local/include/iconv.h")
+				args = ["--with-iconv-dir=/usr/local"]
+			else
+				args = []
+			end
+			
+			if !sh("#{@destdir}#{@prefix}/bin/ruby", "extconf.rb", *args) ||
+			   # 'make clean' must be run, because sometimes 'make'
+			   # thinks iconv.so is already compiled even though it
+			   # isn't.
 			   !sh("make clean") ||
 			   !sh("make") ||
 			   # For some reason DESTDIR is not necessary here;
