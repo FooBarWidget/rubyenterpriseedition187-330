@@ -851,7 +851,7 @@ static void set_gc_parameters()
     }
     heap_slots_growth_factor_ptr = getenv("RUBY_HEAP_SLOTS_GROWTH_FACTOR");
     if (heap_slots_growth_factor_ptr != NULL) {
-	double heap_slots_growth_factor_d = atoi(heap_slots_growth_factor_ptr);
+	double heap_slots_growth_factor_d = atof(heap_slots_growth_factor_ptr);
         if (verbose_gc_stats) {
 	    fprintf(gc_data_file, "RUBY_HEAP_SLOTS_GROWTH_FACTOR=%s\n", heap_slots_growth_factor_ptr);
 	}
