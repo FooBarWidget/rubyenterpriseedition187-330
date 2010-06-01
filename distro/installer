@@ -4,13 +4,16 @@
 # Ruby interpreter if no suitable bundled Ruby interpreter exists.
 dir=`dirname "$0"`
 cd "$dir"
+
+unset GEM_HOME
+unset GEM_PATH
+unset RUBYOPT
+
 platform="`uname`-`uname -m`"
 if (ruby -e '') 2>/dev/null; then
 	exec ruby installer.rb "$@"
 else
 	#echo "Using 'runtime/$platform/ruby'"
-	RUBYOPT=""
-	export RUBYOPT
 	if ("runtime/$platform/ruby" -e '') 2>/dev/null; then
 		exec "runtime/$platform/ruby" installer.rb "$@"
 	else
