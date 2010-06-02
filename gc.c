@@ -2268,6 +2268,13 @@ set_stack_size(void)
       {
         size_t space = maxStackBytes/5;
         if (space > 1024*1024) space = 1024*1024;
+#ifdef __FreeBSD__
+	/* For some reason we can't use more than 4 MB of stack on
+ 	* FreeBSD even if getrlimit() reports a much higher amount.
+ 	*/
+	if (maxStackBytes > 4 * 1024 * 1024)
+	    maxStackBytes = 4 * 1024 * 1024;
+#endif
         ruby_set_stack_size(maxStackBytes - space);
         return;
       }
