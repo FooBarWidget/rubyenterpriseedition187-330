@@ -7,6 +7,223 @@ Note that each entry is kept so brief that no reason behind or
 reference information is supplied with.  For a full list of changes
 with all sufficient information, see the ChangeLog file.
 
+== Changes since the 1.8.7 release
+
+=== Lexical changes
+
+* empty symbol literal
+
+  Empty symbol (:"") is allowed.
+
+* looser splat opetator
+
+  You can write things like:
+    x, *y, z = a, *b, c
+    def foo(a, b=1, *c, d); end
+  But when you evaluate them, you will get exceptions.
+
+* new hash immediates
+
+  Ruby 1.9 style hash syntax e.g. { key: value } is now also supported
+  in 1.8.  You can also write a method invocation syntax foo bar: baz.
+
+=== Configuration changes
+
+* version specific directories
+
+  A new configure option --with-ruby-version is added, which allows
+  user to specify the version string (defaulted to "1.8") for version
+  specific directories such as library directories, ri directories and
+  gem directories.
+
+=== Library updates (outstanding ones only)
+
+* builtin classes
+
+  * Array#try_convert()
+  * Hash#try_convert()
+  * IO#try_convert()
+  * Regexp#try_convert()
+  * String#try_convert()
+
+    New methods.
+
+  * Array#sample
+
+    New method with which replaces #choice.
+
+  * Enumerable#each_with_object
+  * Enumerator#with_object
+
+    New methods.
+
+  * Enumerator.new { |y| ... }
+
+    Now can generate an enumerator from a block that defines
+    enumeration instead of an enumerable object.
+
+  * Enumerator#rewind
+
+    Now calls the "rewind" method of the enclosed object if defined.
+
+  * Enumerator#inspect
+
+    Implemented.
+
+  * Hash#default_proc=
+
+    New method.
+
+  * Hash#key
+
+    Renamed from Hash#index.
+
+  * ENV.key
+
+    Renamed from ENV.index.
+
+  * IO#ungetbyte
+
+    Added as an alias to #ungetc.
+
+  * Proc#===
+
+    New method primarily for use in the case-when construct.
+
+  * Range#cover?
+
+    New alias to #include? for the forward compatibility with 1.9, in
+    which the behavior of Range#include? has changed.
+
+  * Regexp
+
+    The regular expression /\s/ now properly matches a vertical tab
+    character (VT: "\v") and /\S/ does not.  It was a bug that /\s/
+    did not match VT when /[\s]/ does.  It is clear that VT should
+    always be regarded as white space, not to mention String#strip.
+
+  * String#getbyte
+  * String#setbyte
+  * String#ord
+
+    New methods for the forward compatibility with 1.9, in which the
+    behavior of String#[] and String#[]= have changed.  String#ord is
+    $KCODE aware.
+
+  * Symbol#succ
+  * Symbol#next
+  * Symbol#<=>
+  * Symbol#casecmp
+  * Symbol#=~
+  * Symbol#[]
+  * Symbol#slice
+  * Symbol#length
+  * Symbol#size
+  * Symbol#empty?
+  * Symbol#match
+  * Symbol#upcase
+  * Symbol#downcase
+  * Symbol#capitalize
+  * Symbol#swapcase
+
+    New methods.
+
+* base64
+
+  * Base64#strict_encode64
+  * Base64#strict_decode64
+  * Base64#urlsafe_encode64
+  * Base64#urlsafe_decode64
+
+    New methods.
+
+* dbm
+
+  DBM#key
+
+    Renamed from DBM#index.
+
+* gdbm
+
+  GDBM#key
+
+    Renamed from GDBM#index.
+
+* open-uri
+
+  * Added a lot of new options:
+
+    * :ftp_active_mode => bool
+
+      Specify false to enable FTP passive mode.  It is adviced that
+      this option should be explicitly set for forward compatibility
+      because the default mode is changed in Ruby >= 1.9.
+
+    * :read_timeout => seconds
+    * :proxy_http_basic_authentication => [uri, user, password]
+    * :redirect => bool
+    * :ssl_verify_mode => OpenSSL::SSL::VERIFY_*
+    * :ssl_ca_cert => filename
+
+* rational
+
+  * Performace improved by making overall code optimization and
+    introducing Fixnum#gcd implemented in C.
+
+* sdbm
+
+  SDBM#key
+
+    Renamed from SDBM#index.
+
+* securerandom
+
+  SecureRandom.uuid
+
+    New method to generate a v4 random UUID.
+
+* set
+
+  Set#classify
+  Set#collect!
+  Set#delete_if
+  Set#delete_if
+  Set#divide
+  Set#reject!
+
+    Return an enumerator if no block is given.
+
+* stringio
+
+  * StringIO#ungetbyte
+
+    Added as an alias to #ungetc.
+
+* digest
+    * new methods:
+      * Digest::Class.base64digest
+      * Digest::Instance#base64digest
+      * Digest::Instance#base64digest!
+
+* rss
+
+  * 0.2.4 -> 0.2.7.
+
+  * RSS::Maker.make
+    * raise an exception not returns nil for invalid feed making.
+    * requires block.
+
+  * RSS::Maker.[]
+    * new method to return maker class.
+
+  * RSS::Maker.supported?(version)
+    * new method to check whether given version is supported.
+
+  * RSS::Maker: item.guid.permanent_link?
+    * new alias of item.guid.isPermaLink
+  * RSS::Maker: item.guid.permanent_link=
+    * new alias of item.guid.isPermaLink=
+
 * REXML
 
   * REXML::Document.entity_expansion_limit=

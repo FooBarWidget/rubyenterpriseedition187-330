@@ -737,6 +737,23 @@ Thu Apr  1 05:32:17 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
 	* string.c (rb_str_inspect): wrong result of UTF-8 inspect because of
 	  the mistake of calculation.  reported by eban via IRC.
 
+Fri Feb  5 23:09:01 2010  Akinori MUSHA  <knu@iDaemons.org>
+
+	* ext/rational/rational.c: Added to provide a fast implementation
+	  of Fixnum#gcd (and maybe some others in the future) in C.  The
+	  base code was submitted by Kurt Stephens. [Feature #2561]
+
+	* ext/rational/lib/rational.rb: Moved from lib/rational.rb.  Make
+	  overall code optimization; submitted by Kurt Stephens.
+	  [Feature #2561]
+
+	* test/rational/test_rational.rb, test/rational/test_rational2.rb:
+	  Add tests for Rational, ported from trunk.
+
+	* test/rational/test_fixnum_gcd.rb: Add a test for Integer#gcd.
+	  Case values are only provided for i386 and amd64 at the moment;
+	  submitted by Kurt Stephens. [Feature #2561]
+
 Sun Jan 10 19:00:31 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* lib/webrick/accesslog.rb : Escape needed.
