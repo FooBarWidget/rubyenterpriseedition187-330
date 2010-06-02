@@ -206,10 +206,12 @@ make PRELIBS="-Wl,-rpath,$PREFIX/lib -L$PREFIX/lib -ltcmalloc_minimal"
 
 Notes:
 
-1. If you did not install tcmalloc, then you can omit the '-ltcmalloc_minimal'
-   part.
-2. If you are on MacOS X, then you need to append '-lsystem_allocator' to the
-   'PRELIBS' option.
+- If you did not install tcmalloc, then you can omit the '-ltcmalloc_minimal'
+  part.
+- If you are on MacOS X, then you need to append '-lsystem_allocator' to the
+  'PRELIBS' option.
+- If you are on FreeBSD, then you need to append '-lpthread' to the 'PRELIBS'
+  option.
 
 Now that REE has been compiled, install it with:
 

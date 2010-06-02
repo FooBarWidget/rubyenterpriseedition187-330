@@ -268,6 +268,12 @@ private
 			if platform_uses_two_level_namespace_for_dynamic_libraries?
 				prelibs << " -lsystem_allocator"
 			end
+			if RUBY_PLATFORM =~ /freebsd/
+				# On FreeBSD the Ruby interpreter must be linked to
+				# pthread, otherwise native extensions that are linked
+				# to pthread won't load properly.
+				prelibs << " -lpthread"
+			end
 			File.open("make.sh", "w") do |f|
 				f.write("#!/bin/bash\n")
 				f.write("exec make PRELIBS='#{prelibs}' \"$@\"")
