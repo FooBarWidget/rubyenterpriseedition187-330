@@ -1199,7 +1199,7 @@ ossl_ssl_get_peer_cert_chain(VALUE self)
     num = sk_X509_num(chain);
     ary = rb_ary_new2(num);
     for (i = 0; i < num; i++){
-	cert = sk_X509_value(chain, i);
+	cert = (X509*)sk_X509_value(chain, i);
 	rb_ary_push(ary, ossl_x509_new(cert));
     }
 
