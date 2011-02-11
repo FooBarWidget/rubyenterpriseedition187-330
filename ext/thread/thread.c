@@ -205,6 +205,16 @@ array_from_list(List const *list)
     return ary;
 }
 
+static void
+adjust_join(const List *list, VALUE new)
+{
+    extern void rb_thread_set_join _((VALUE, VALUE));
+    Entry *entry;
+    for (entry = list->entries; entry; entry = entry->next) {
+		rb_thread_set_join(entry->value, new);
+    }
+}
+
 static VALUE
 wake_thread(VALUE thread)
 {
@@ -471,6 +481,9 @@ unlock_mutex_inner(Mutex *mutex)
     }
 
     waking = wake_one(&mutex->waiting);
+	if (!NIL_P(waking)) {
+		adjust_join(&mutex->waiting, waking);
+	}
     mutex->owner = waking;
 
     return waking;
