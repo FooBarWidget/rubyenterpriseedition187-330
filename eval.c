@@ -1141,6 +1141,20 @@ rb_thread_t rb_main_thread;
 #define main_thread rb_main_thread
 #define curr_thread rb_curr_thread
 
+
+#ifndef STACK_FREE_SAFE_DEBUG
+#define STACK_FREE_SAFE_DEBUG 0
+#endif
+
+#if STACK_FREE_SAFE_DEBUG
+#define stack_free_safe(TH,MSG) _stack_free_safe(TH,MSG)
+#else
+#define stack_free_safe(TH,MSG) _stack_free_safe(TH)
+#endif
+
+
+static void stack_free_safe_all_dead_threads();
+
 static void scope_dup _((struct SCOPE *));
 
 #define POP_SCOPE() 			\
@@ -10977,6 +10991,9 @@ rb_thread_restore_context_0(rb_thread_t th, int exit)
     static int ex;
     static VALUE tval;
 
+    /* Free any dead thread's stk_ptr. */
+    stack_free_safe_all_dead_threads();
+
     rb_trap_immediate = 0;	/* inhibit interrupts from here */
     if (ruby_sandbox_restore != NULL) {
 	ruby_sandbox_restore(th);
@@ -11108,12 +11125,57 @@ rb_thread_ready(th)
     }
 }
 
+static
+rb_thread_t dead_thread_needs_stack_free = 0;
+
+static
+int dead_threads_need_stack_free = 0;
+
+static int
+_stack_free_safe (th
+#if STACK_FREE_SAFE_DEBUG
+		 , msg
+#endif
+		 )
+    rb_thread_t th;
+#if STACK_FREE_SAFE_DEBUG
+    const char *msg;
+#endif
+{
+    if ( th->status == THREAD_KILLED && th->stk_ptr ) {
+        void *sp = (void*) &th;
+#if STACK_FREE_SAFE_DEBUG
+        fprintf(stderr, "\n%s: stack_free_safe(%p): sp (%p): stk [%p, %p): ", 
+                msg, th, sp, th->stk_ptr, th->stk_ptr + th->stk_size);
+#endif
+        if ( (void*) th->stk_ptr <= sp && sp < (void*) (th->stk_ptr + th->stk_size) ) {
+#if STACK_FREE_SAFE_DEBUG
+            fprintf(stderr, "  cannot call stack_free(), yet. \n");
+            fflush(stderr);
+#endif
+            dead_thread_needs_stack_free = th;
+            ++ dead_threads_need_stack_free;
+        } else {
+#if STACK_FREE_SAFE_DEBUG
+            fprintf(stderr, "  calling stack_free(). \n");
+            fflush(stderr);
+#endif
+            if ( dead_thread_needs_stack_free == th )
+                dead_thread_needs_stack_free = 0;
+            stack_free(th);
+            return 1; /* stack freed. */
+        }
+    }
+    return 0; /* stack not freed */
+}
+
 static void
 rb_thread_die(th)
     rb_thread_t th;
 {
     th->thgroup = 0;
     th->status = THREAD_KILLED;
+    stack_free_safe(th, "rb_thread_die");
 }
 
 static void
@@ -13126,6 +13188,40 @@ rb_thread_wait_other_threads()
 	END_FOREACH(th);
 	if (!found) return;
 	rb_thread_schedule();
+    }
+}
+
+static void
+stack_free_safe_all_dead_threads()
+{
+    if ( dead_threads_need_stack_free ) {
+        rb_thread_t curr, th;
+        int left = dead_threads_need_stack_free;
+
+#if STACK_FREE_SAFE_DEBUG
+        fprintf(stderr, "\nstack_free_safe_all_dead_threads(): %d\n", dead_threads_need_stack_free);
+        fflush(stderr);
+#endif
+
+        /* stack_free_safe() will increment this flag if stack_free_safe(th) cannot call stack_free(). */
+        dead_threads_need_stack_free = 0;
+
+        /*
+        ** Check the last known dead thread that needs stack_free().
+        ** That thread might have been rb_thread_remove()'ed from the thread ring.
+        ** Otherwise, start after current thread's stk_ptr, it should not be freeable anyway.
+        */
+        if ( th = dead_thread_needs_stack_free ) {
+	    if ( stack_free_safe(th, "stack_free_safe_all_dead_threads") )
+	        if ( -- left <= 0 ) return;
+        }
+
+        curr = curr_thread;
+        FOREACH_THREAD_FROM(curr, th) {
+            if ( stack_free_safe(th, "stack_free_safe_all_dead_threads") )
+                if ( -- left <= 0 ) return;
+        }
+        END_FOREACH_FROM(curr, th);
     }
 }
 
