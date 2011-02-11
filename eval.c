@@ -7169,6 +7169,7 @@ rb_load(fname, wrap)
     PUSH_ITER(ITER_NOT);
     PUSH_FRAME();
     ruby_frame->last_func = 0;
+    ruby_frame->orig_func = 0;
     ruby_frame->last_class = 0;
     ruby_frame->self = self;
     PUSH_SCOPE();
@@ -7462,9 +7463,13 @@ search_required(fname, featurep, path)
     const char *ext, *ftptr;
     int type;
 
+    if (*(ftptr = RSTRING_PTR(fname)) == '~') {
+	fname = rb_file_expand_path(fname, Qnil);
+	ftptr = RSTRING_PTR(fname);
+    }
     *featurep = fname;
     *path = 0;
-    ext = strrchr(ftptr = RSTRING_PTR(fname), '.');
+    ext = strrchr(ftptr, '.');
     if (ext && !strchr(ext, '/')) {
 	if (strcmp(".rb", ext) == 0) {
 	    if (rb_feature_p(ftptr, ext, Qtrue)) {
@@ -9004,8 +9009,7 @@ proc_invoke(proc, args, self, klass)
     _block = *data;
     _block.block_obj = bvar;
     if (self != Qundef) _block.frame.self = self;
-    _block.frame.last_class = klass;
-    if (!klass) _block.frame.last_func = 0;
+    if (klass) _block.frame.last_class = klass;
     _block.frame.argc = RARRAY(tmp)->len;
     _block.frame.flags = ruby_frame->flags;
     if (_block.frame.argc && DMETHOD_P()) {
@@ -10104,7 +10108,7 @@ rb_mod_define_method(argc, argv, mod)
     VALUE mod;
 {
     ID id;
-    VALUE body;
+    VALUE body, orig;
     NODE *node;
     int noex;
 
@@ -10124,6 +10128,7 @@ rb_mod_define_method(argc, argv, mod)
 	rb_raise(rb_eArgError, "wrong number of arguments (%d for 1)", argc);
     }
     SET_METHOD_SOURCE();
+    orig = body;
     if (RDATA(body)->dmark == (RUBY_DATA_FUNC)bm_mark) {
 	node = NEW_DMETHOD(method_unbind(body));
     }
@@ -10152,7 +10157,7 @@ rb_mod_define_method(argc, argv, mod)
 	}
     }
     rb_add_method(mod, id, node, noex);
-    return body;
+    return orig;
 }
 
 
@@ -12569,6 +12574,8 @@ static struct timer_thread {
     pthread_t thread;
 } time_thread = {PTHREAD_COND_INITIALIZER, PTHREAD_MUTEX_INITIALIZER};
 
+static int timer_stopping;
+
 #define safe_mutex_lock(lock) \
     pthread_mutex_lock(lock); \
     pthread_cleanup_push((void (*)_((void *)))pthread_mutex_unlock, lock)
@@ -12593,6 +12600,9 @@ thread_timer(dummy)
 #define WAIT_FOR_10MS() \
     pthread_cond_timedwait(&running->cond, &running->lock, get_ts(&to, PER_NANO/100))
     while ((err = WAIT_FOR_10MS()) == EINTR || err == ETIMEDOUT) {
+	if (timer_stopping)
+	    break;
+
 	if (!rb_thread_critical) {
 	    rb_thread_pending = 1;
 	    if (rb_trap_immediate) {
@@ -12620,7 +12630,6 @@ rb_thread_start_timer()
     safe_mutex_lock(&time_thread.lock);
     if (pthread_create(&time_thread.thread, 0, thread_timer, args) == 0) {
 	thread_init = 1;
-	pthread_atfork(0, 0, rb_thread_stop_timer);
 	pthread_cond_wait(&start, &time_thread.lock);
     }
     pthread_cleanup_pop(1);
@@ -12631,10 +12640,12 @@ rb_thread_stop_timer()
 {
     if (!thread_init) return;
     safe_mutex_lock(&time_thread.lock);
+    timer_stopping = 1;
     pthread_cond_signal(&time_thread.cond);
     thread_init = 0;
     pthread_cleanup_pop(1);
     pthread_join(time_thread.thread, NULL);
+    timer_stopping = 0;
 }
 #elif defined(HAVE_SETITIMER)
 static void
@@ -13860,6 +13871,7 @@ recursive_push(hash, obj)
     sym = ID2SYM(rb_frame_last_func());
     if (NIL_P(hash) || TYPE(hash) != T_HASH) {
 	hash = rb_hash_new();
+	OBJ_TAINT(hash);
 	rb_thread_local_aset(rb_thread_current(), recursive_key, hash);
 	list = Qnil;
     }
@@ -13868,6 +13880,7 @@ recursive_push(hash, obj)
     }
     if (NIL_P(list) || TYPE(list) != T_HASH) {
 	list = rb_hash_new();
+	OBJ_TAINT(list);
 	rb_hash_aset(hash, sym, list);
     }
     rb_hash_aset(list, obj, Qtrue);
