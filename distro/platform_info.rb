@@ -223,7 +223,7 @@ public
 	def self.find_command(name)
 		ENV['PATH'].split(File::PATH_SEPARATOR).detect do |directory|
 			path = File.join(directory, name.to_s)
-			if File.executable?(path)
+			if File.file?(path) && File.executable?(path)
 				return path
 			end
 		end
