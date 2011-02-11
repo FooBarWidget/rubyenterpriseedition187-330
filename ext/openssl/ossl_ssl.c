@@ -829,7 +829,7 @@ ossl_sslctx_flush_sessions(int argc, VALUE *argv, VALUE self)
         rb_raise(rb_eArgError, "arg must be Time or nil");
     }
 
-    SSL_CTX_flush_sessions(ctx, tm);
+    SSL_CTX_flush_sessions(ctx, (long)tm);
 
     return self;
 }
@@ -1196,10 +1196,10 @@ ossl_ssl_get_peer_cert_chain(VALUE self)
     }
     chain = SSL_get_peer_cert_chain(ssl);
     if(!chain) return Qnil;
-    num = sk_num(chain);
+    num = sk_X509_num(chain);
     ary = rb_ary_new2(num);
     for (i = 0; i < num; i++){
-	cert = (X509*)sk_value(chain, i);
+	cert = sk_X509_value(chain, i);
 	rb_ary_push(ary, ossl_x509_new(cert));
     }
 

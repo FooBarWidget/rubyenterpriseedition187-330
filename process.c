@@ -1330,7 +1330,11 @@ rb_f_fork(obj)
     fflush(stderr);
 #endif
 
-    switch (pid = fork()) {
+    before_exec();
+    pid = fork();
+    after_exec();
+
+    switch (pid) {
       case 0:
 #ifdef linux
 	after_exec();
@@ -1570,6 +1574,7 @@ rb_f_system(argc, argv)
 
     chfunc = signal(SIGCHLD, SIG_DFL);
   retry:
+    before_exec();
     pid = fork();
     if (pid == 0) {
 	/* child process */
@@ -1577,6 +1582,7 @@ rb_f_system(argc, argv)
 	rb_protect(proc_exec_args, (VALUE)&earg, NULL);
 	_exit(127);
     }
+    after_exec();
     if (pid < 0) {
 	if (errno == EAGAIN) {
 	    rb_thread_sleep(1);
