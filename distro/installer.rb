@@ -386,7 +386,7 @@ private
 
 		gem_names = []
 		if @install_useful_gems
-			gem_names += ["passenger", "rake", "rails", mysql_gem]
+			gem_names += ["passenger", "rake", "rails", mysql_gem, "bundler"]
 		end
 		failed_gems = []
 		
