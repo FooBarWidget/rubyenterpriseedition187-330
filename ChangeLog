@@ -3,6 +3,40 @@ Sun May 30 02:21:34 2010  Yusuke Endoh  <mame@tsg.ne.jp>
 	* ext/zlib/zlib.c (zstream_append_input2): add RB_GC_GUARD.
 	  This caused failure when test/csv is executed with GC.stress = true.
 
+Fri Feb 18 21:18:55 2011  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* test/ruby/test_exception.rb (TestException::test_to_s_taintness_propagation):
+	  Test for below.
+
+Fri Feb 18 21:18:55 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* error.c (exc_to_s): untainted strings can be tainted via
+	  Exception#to_s, which enables attackers to overwrite sane strings.
+	  Reported by: Yusuke Endoh <mame at tsg.ne.jp>.
+
+	* error.c (name_err_to_s): ditto.
+
+Fri Feb 18 21:17:22 2011  Shugo Maeda  <shugo@ruby-lang.org>
+
+	* lib/fileutils.rb (FileUtils::remove_entry_secure): there is a
+	  race condition in the case where the given path is a directory,
+	  and some other user can move that directory, and create a
+	  symlink while this method is executing.
+	  Reported by: Nicholas Jefferson <nicholas at pythonic.com.au>
+
+Fri Feb 18 19:46:46 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/win32.c (init_stdhandle): backport mistake of r29382.
+	  some code are needless in ruby 1.8.
+	  [ruby-core:34579]
+
+Fri Feb 18 19:22:17 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* configure.in: revert revision r29854.  This revision introduced
+	  binary incompatibilities on some circumstances.  The bug that
+	  revision was fixing gets reopened by this reversion.
+	  [ruby-dev:43152] cf. [Bug #2553]
+
 Thu Dec 23 12:22:35 2010  Tanaka Akira  <akr@fsij.org>
 
 	* lib/resolv.rb (Resolv::IPv4::Regex): make it only accept 0 to 255.
