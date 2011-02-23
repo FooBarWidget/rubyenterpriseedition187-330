@@ -255,7 +255,8 @@ private
 				end
 			end
 			
-			prelibs = "-Wl,"
+			preincflags = "-I/opt/local/include"
+			prelibs = "-L/opt/local/lib -Wl,"
 			if PlatformInfo.solaris_ld?
 				prelibs << "-R#{@prefix}/lib"
 			else
@@ -276,10 +277,10 @@ private
 			end
 			File.open("make.sh", "w") do |f|
 				f.write("#!/bin/bash\n")
-				f.write("exec make PRELIBS='#{prelibs}' \"$@\"")
+				f.write("exec make PREINCFLAGS='#{preincflags}' PRELIBS='#{prelibs}' \"$@\"")
 				f.chmod(0755)
 			end
-			return sh("make PRELIBS='#{prelibs}'")
+			return sh("make PREINCFLAGS='#{preincflags}' PRELIBS='#{prelibs}'")
 		end
 	end
 	
