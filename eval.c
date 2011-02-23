@@ -11062,7 +11062,6 @@ rb_thread_schedule()
 	if (th->status != THREAD_STOPPED) continue;
 	if (th->wait_for & WAIT_JOIN) {
 	    if (rb_thread_dead(th->join)) {
-		th->wait_for = 0;
 		th->status = THREAD_RUNNABLE;
 		found = 1;
 	    }
@@ -11567,22 +11566,6 @@ rb_thread_join(thread, limit)
     return rb_thread_join0(rb_thread_check(thread), limit);
 }
 
-void
-rb_thread_set_join(thread, join)
-    VALUE thread, join;
-{
-	rb_thread_t th = rb_thread_check(thread);
-	rb_thread_t jth = rb_thread_check(join);
-	if ((th->wait_for & WAIT_JOIN) == 0) {
-		rb_bug( "Internal consistency failure! Expected thread to already be in waiting to join state %0x, was in %0x", WAIT_JOIN, th->wait_for);
-	}
-
-	if (th->join != curr_thread) {
-		rb_bug( "Internal consistency failure! Should only invoke rb_thread_set_join from a mutex unlock. Thread join aiming at %0x which something other than current thread %0x", th->join, curr_thread);
-	}
-
-	th->join = jth;
-}
 
 /*
  *  call-seq:
