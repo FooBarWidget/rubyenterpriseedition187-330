@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# encoding: binary
 require "#{File.dirname(__FILE__)}/optparse"
 require "#{File.dirname(__FILE__)}/dependencies"
 
