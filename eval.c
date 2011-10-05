@@ -13205,7 +13205,7 @@ cc_purge(cc)
     rb_thread_t cc;
 {
     /* free continuation's stack if it has just died */
-    if (NIL_P(cc->thread &&
+    if (NIL_P(cc->thread) &&
         THREAD_DATA(cc->thread)->status == THREAD_KILLED) {
 	  cc->thread = Qnil;
 	  rb_thread_die(cc);  /* can't possibly activate this stack */
@@ -13370,6 +13370,29 @@ struct thgroup {
     int enclosed;
     VALUE group;
 };
+
+
+/*
+ *  call-seq:
+ *     cont.thread
+ *  
+ *  Returns the thread on which this continuation can be called
+ *              (or nil if that thread has died)
+ *
+ *     t = Thread.new {callcc{|c| $x=c}; sleep 5}
+ *     sleep 1
+ *     $x.thread                             #=> t
+ *     sleep 10
+ *     $x.thread                             #=> nil
+ */
+static VALUE
+rb_cont_thread(cont)
+  VALUE cont;
+{
+  rb_thread_t th = THREAD_DATA(cont);
+  cc_purge(th);
+  return th->thread;
+}
 
 
 /*
@@ -13721,6 +13744,7 @@ Init_Thread()
     rb_undef_method(CLASS_OF(rb_cCont), "new");
     rb_define_method(rb_cCont, "call", rb_cont_call, -1);
     rb_define_method(rb_cCont, "[]", rb_cont_call, -1);
+    rb_define_method(rb_cCont, "thread", rb_cont_thread, 0);
     rb_define_global_function("callcc", rb_callcc, 0);
     rb_global_variable(&cont_protect);
 
