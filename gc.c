@@ -506,12 +506,12 @@ stack_end_address(VALUE **stack_end_p)
 # define STACK_END (stack_end)
 #endif
 #if STACK_GROW_DIRECTION < 0
-# define STACK_LENGTH  (rb_gc_stack_start - STACK_END)
+# define STACK_LENGTH(start)  ((start) - STACK_END)
 #elif STACK_GROW_DIRECTION > 0
-# define STACK_LENGTH  (STACK_END - rb_gc_stack_start + 1)
+# define STACK_LENGTH(start)  (STACK_END - (start) + 1)
 #else
-# define STACK_LENGTH  ((STACK_END < rb_gc_stack_start) ? rb_gc_stack_start - STACK_END\
-                                           : STACK_END - rb_gc_stack_start + 1)
+# define STACK_LENGTH(start)  ((STACK_END < (start)) ? (start) - STACK_END\
+                                           : STACK_END - (start) + 1)
 #endif
 #if STACK_GROW_DIRECTION > 0
 # define STACK_UPPER(x, a, b) a
@@ -536,16 +536,16 @@ stack_grow_direction(addr)
 
 #define CHECK_STACK(ret) do {\
     SET_STACK_END;\
-    (ret) = (STACK_LENGTH > STACK_LEVEL_MAX + GC_WATER_MARK);\
+    (ret) = (STACK_LENGTH(rb_gc_stack_start) > STACK_LEVEL_MAX + GC_WATER_MARK);\
 } while (0)
 
-size_t
-ruby_stack_length(p)
-    VALUE **p;
+int
+ruby_stack_length(start, base)
+    VALUE *start, **base;
 {
     SET_STACK_END;
-    if (p) *p = STACK_UPPER(STACK_END, rb_gc_stack_start, STACK_END);
-    return STACK_LENGTH;
+    if (base) *base = STACK_UPPER(STACK_END, start, STACK_END);
+    return STACK_LENGTH(start);
 }
 
 int
