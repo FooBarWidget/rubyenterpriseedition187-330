@@ -560,7 +560,7 @@ stack_grow_direction(addr)
     (ret) = (STACK_LENGTH(rb_gc_stack_start) > STACK_LEVEL_MAX + GC_WATER_MARK);\
 } while (0)
 
-int
+size_t
 ruby_stack_length(start, base)
     VALUE *start, **base;
 {

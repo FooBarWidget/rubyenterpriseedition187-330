@@ -2143,6 +2143,14 @@ Fri Jan  2 03:08:47 2009  Kouhei Sutou  <kou@cozmixng.org>
         
 	* test/rss/: use PNG instead of zlib as binary data. [ruby-dev:35666]
 
+Tue Dec 15  9:15:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  factored rb_eval() into many separate non-inlined
+                  functions to reduce the size of its stack frame when
+                  compiled with gcc.
+                  Factored callcc into 2 functions.
+
+
 Tue Dec 13  6:10:36 2008  Brent Roman  <brent@mbari.org>
 
         * eval.c:  update stack extent just before and after every setjmp
