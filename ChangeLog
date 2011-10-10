@@ -49,6 +49,14 @@ Mon Oct 17 03:56:12 2011  Yusuke Endoh  <mame@tsg.ne.jp>
 	  store->ex_data.sk.  [ruby-core:28907] [ruby-core:23971]
 	  [ruby-core:18121]
 
+Mon Oct 10 23:15:00 2011  Brent Roman  <brent@mbari.org>
+
+        * MBARI 8 patchset wrapup
+        
+	* removed break; after JUMP_TAG
+        
+        * fixed GCC 4.6 compile warnings in eval.c and gc.c
+
 Thu Jun 30 12:52:56 2011  WATANABE Hirofumi  <eban@ruby-lang.org>
 
 	* ext/tk/extconf.rb (intptr_t, uintptr_t): support for the latest ActiveTcl with mingw.

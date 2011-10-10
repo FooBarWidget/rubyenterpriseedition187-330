@@ -3913,11 +3913,11 @@ again:
 	goto again;
 
       case NODE_WHEN:
-        if (node = eval_when(self, node)) goto again;
+        if ((node = eval_when(self, node))) goto again;
         break;
 
       case NODE_CASE:
-        if (node = eval_case(self, node)) goto again;
+        if ((node = eval_case(self, node))) goto again;
         break;
 
       case NODE_WHILE:
@@ -3947,11 +3947,9 @@ again:
 
       case NODE_REDO:
 	JUMP_TAG(TAG_REDO);
-	break;
 
       case NODE_RETRY:
 	JUMP_TAG(TAG_RETRY);
-	break;
 
       case NODE_SPLAT:
 	result = splat_value(rb_eval(self, node->nd_head));
@@ -4855,7 +4853,6 @@ rb_make_exception(argc, argv)
 
     switch (argc) {
       case 0:
-	mesg = Qnil;
 	break;
       case 1:
 	if (NIL_P(argv[0])) break;
@@ -5026,7 +5023,7 @@ break_jump(retval)
 	    tt->dst = (VALUE)tt->frame->uniq;
 	    tt->retval = retval;
 	    JUMP_TAG(TAG_BREAK);
-	    break;
+
 	  case PROT_FUNC:
 	    tt = 0;
 	    continue;
@@ -5055,7 +5052,7 @@ next_jump(retval)
 	    tt->dst = (VALUE)tt->frame->uniq;
 	    tt->retval = retval;
 	    JUMP_TAG(TAG_NEXT);
-	    break;
+
 	  default:
 	    break;
 	}
@@ -5207,7 +5204,7 @@ rb_yield_0(val, self, klass, flags, avalue)
 	  switch (node->nd_state) {
 	    case YIELD_FUNC_LAMBDA:
 	      if (!avalue) {
-		  val = rb_ary_new3(1, val);
+                  val = (val == Qundef) ? rb_ary_new2(0) : rb_ary_new3(1, val);
 	      }
 	      break;
 	    case YIELD_FUNC_AVALUE:
@@ -5290,7 +5287,6 @@ rb_yield_0(val, self, klass, flags, avalue)
 	/* fall through */
       default:
 	JUMP_TAG(state);
-	break;
     }
     ruby_current_node = cnode;
     return result;
@@ -5524,12 +5520,11 @@ assign(self, lhs, val, pcall)
 
 VALUE
 rb_iterate(it_proc, data1, bl_proc, data2)
-    VALUE (* volatile it_proc) _((VALUE)), (*bl_proc)(ANYARGS);
-    volatile VALUE data1;
-    VALUE data2;
+    VALUE (*it_proc) _((VALUE)), (*bl_proc)(ANYARGS);
+    VALUE data1, data2;
 {
     int state;
-    VALUE retval = Qnil;
+    VALUE retval;
     NODE *node = NEW_IFUNC(bl_proc, data2);
     VALUE self = ruby_top_self;
 
@@ -5656,7 +5651,7 @@ rb_protect(proc, data, state)
     VALUE data;
     int * volatile state;
 {
-    VALUE result;
+    VALUE result = Qnil;
     int status;
 
     PUSH_TAG(PROT_NONE);
@@ -5669,7 +5664,7 @@ rb_protect(proc, data, state)
     if (state) {
 	*state = status;
     }
-    return status ? Qnil : result;
+    return result;
 }
 
 VALUE
@@ -5680,8 +5675,7 @@ rb_ensure(b_proc, data1, e_proc, data2)
     volatile VALUE data2;
 {
     int state;
-    VALUE result;
-    VALUE retval;
+    VALUE result, retval;
 
     PUSH_TAG(PROT_NONE);
     if ((state = EXEC_TAG()) == 0) {
@@ -5719,7 +5713,6 @@ rb_with_disable_interrupt(proc, data)
     }
     ENABLE_INTS;
     if (status) JUMP_TAG(status);
-
     return result;
 }
 
@@ -5788,7 +5781,6 @@ rb_method_missing(argc, argv, obj)
     VALUE *argv;
     VALUE obj;
 {
-    ID id;
     VALUE exc = rb_eNoMethodError;
     const char *format = 0;
     NODE *cnode = ruby_current_node;
@@ -5798,8 +5790,6 @@ rb_method_missing(argc, argv, obj)
     }
 
     stack_check();
-
-    id = SYM2ID(argv[0]);
 
     if (last_call_status & CSTAT_PRIV) {
 	format = "private method `%s' called for %s";
@@ -5974,7 +5964,7 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
     int flags;
 {
     NODE *b2;
-    VALUE result;
+    VALUE result = Qnil;
     int itr;
     TMP_PROTECT;
     volatile int safe = -1;
@@ -6201,8 +6191,6 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 		result = prot_tag->retval;
 		state = 0;
 	    }
-            else
-                result = Qnil;
 	    POP_TAG();
 	    if (event_hooks) {
 		EXEC_EVENT_HOOK(RUBY_EVENT_RETURN, ruby_current_node,
@@ -6220,14 +6208,12 @@ rb_call0(klass, recv, id, oid, argc, argv, body, flags)
 	      case TAG_BREAK:
 	      case TAG_RETURN:
 		JUMP_TAG(state);
-		break;
 
 	      case TAG_RETRY:
 		if (rb_block_given_p()) JUMP_TAG(state);
 		/* fall through */
 	      default:
 		jump_tag_but_local_jump(state, result);
-		break;
 	    }
 	}
 	break;
@@ -6863,7 +6849,6 @@ exec_under(func, under, cbase, args)
     POP_FRAME();
     POP_CLASS();
     if (state) JUMP_TAG(state);
-
     return val;
 }
 
@@ -7289,16 +7274,8 @@ rb_feature_p(ftptr, ext, rb)
 {
     VALUE v;
     const char *f, *e, *feature = *ftptr;
-    long i, len, elen;
+    long i, len = ext ? ext - feature : strlen(feature);
 
-    if (ext) {
-	len = ext - feature;
-	elen = strlen(ext);
-    }
-    else {
-	len = strlen(feature);
-	elen = 0;
-    }
     for (i = 0; i < RARRAY_LEN(rb_features); ++i) {
 	v = RARRAY_PTR(rb_features)[i];
 	f = StringValuePtr(v);
@@ -7377,6 +7354,9 @@ rb_provide(feature)
 {
     rb_provide_feature(rb_str_new2(feature));
 }
+
+static int rb_thread_join0 _((rb_thread_t, double));
+int rb_thread_join _((VALUE, double));
 
 static char *
 load_lock(ftptr)
@@ -7530,7 +7510,7 @@ rb_require_safe(fname, safe)
     VALUE fname;
     int safe;
 {
-    VALUE result;
+    VALUE result = Qnil;
     volatile VALUE errinfo = ruby_errinfo;
     int state;
     struct {
@@ -7581,8 +7561,7 @@ rb_require_safe(fname, safe)
 		rb_provide_feature(feature);
 		result = Qtrue;
 	    }
-	}else
-          result = Qnil;
+	}
     }
     POP_TAG();
     ruby_current_node = saved.node;
@@ -9037,7 +9016,7 @@ proc_invoke(proc, args, self, klass)
       case TAG_RETRY:
 	proc_jump_error(TAG_RETRY, Qnil); /* xxx */
 	JUMP_TAG(state);
-	break;
+
       case TAG_NEXT:
       case TAG_BREAK:
 	if (!pcall && result != Qundef) {
@@ -10169,7 +10148,7 @@ method_source_file_name(VALUE method)
     NODE *node;
 
     Data_Get_Struct(method, struct METHOD, data);   
-    if (node = data->body) {
+    if ((node = data->body)) {
       const char *filename = node->nd_file;
       if (filename)
         return rb_str_new2(filename);
@@ -10195,7 +10174,7 @@ method_source_line(VALUE method)
     NODE *node;
 
     Data_Get_Struct(method, struct METHOD, data);
-    if (node = data->body) {
+    if ((node = data->body)) {
       int lineno = nd_line(node);
       if (lineno)
         return INT2FIX(nd_line(node));
@@ -10219,7 +10198,6 @@ static VALUE
 proc_source_file_name(VALUE block)
 {
     struct BLOCK *data;
-    const char *filename;
     NODE *node;
 
     Data_Get_Struct(block, struct BLOCK, data);
@@ -10947,7 +10925,7 @@ rb_thread_switch(n)
 	return 0;
       case RESTORE_FATAL:
 	JUMP_TAG(TAG_FATAL);
-	break;
+
       case RESTORE_INTERRUPT:
 	rb_interrupt();
 	break;
@@ -11069,7 +11047,7 @@ static void
 stack_extend(rb_thread_t th, int exit)
 {
 #define STACK_PAD_SIZE 1024
-    volatile VALUE space[STACK_PAD_SIZE], *sp = space;
+    volatile VALUE space[STACK_PAD_SIZE];
 
 #if !STACK_GROW_DIRECTION
     if (space < rb_gc_stack_start) {
@@ -11078,7 +11056,8 @@ stack_extend(rb_thread_t th, int exit)
 #if STACK_GROW_DIRECTION <= 0
 	if (space > th->stk_pos) {
 # ifdef HAVE_ALLOCA
-	    sp = ALLOCA_N(VALUE, &space[0] - th->stk_pos);
+            (void)(volatile void *)
+	    ALLOCA_N(VALUE, &space[0] - th->stk_pos);
 # else
 	    stack_extend(th, exit);
 # endif
@@ -11092,7 +11071,8 @@ stack_extend(rb_thread_t th, int exit)
 #if STACK_GROW_DIRECTION >= 0
 	if (&space[STACK_PAD_SIZE] < th->stk_pos + th->stk_len) {
 # ifdef HAVE_ALLOCA
-	    sp = ALLOCA_N(VALUE, th->stk_pos + th->stk_len - &space[STACK_PAD_SIZE]);
+	    (void)(volatile void *)
+            ALLOCA_N(VALUE, th->stk_pos + th->stk_len - &space[STACK_PAD_SIZE]);
 # else
 	    stack_extend(th, exit);
 # endif
@@ -11212,14 +11192,11 @@ copy_fds(dst, src, max)
     fd_set *dst, *src;
     int max;
 {
-    int n = 0;
     int i;
 
     for (i=0; i<=max; i++) {
-	if (FD_ISSET(i, src)) {
-	    n = i;
+	if (FD_ISSET(i, src))
 	    FD_SET(i, dst);
-	}
     }
 }
 
@@ -11775,9 +11752,6 @@ rb_thread_select(max, read, write, except, timeout)
     }
     return curr_thread->select_value;
 }
-
-static int rb_thread_join0 _((rb_thread_t, double));
-int rb_thread_join _((VALUE, double));
 
 static int
 rb_thread_join0(th, limit)
@@ -13931,12 +13905,14 @@ rb_exec_recursive(func, obj, arg)
 	return (*func) (obj, arg, Qtrue);
     }
     else {
-	VALUE result;
+	VALUE result = Qundef;
 	int state;
 
 	hash = recursive_push(hash, objid);
 	PUSH_TAG(PROT_NONE);
-	result = (state = EXEC_TAG()) ? Qundef : (*func) (obj, arg, Qfalse);
+	if ((state = EXEC_TAG()) == 0) {
+	    result = (*func) (obj, arg, Qfalse);
+	}
 	POP_TAG();
 	recursive_pop(hash, objid);
 	if (state)
@@ -14090,7 +14066,6 @@ rb_f_catch(dmy, tag)
     }
     POP_TAG();
     if (state) JUMP_TAG(state);
-
     return val;
 }
 

@@ -39,25 +39,6 @@ void rb_io_fptr_finalize _((struct rb_io_t*));
 int _setjmp(), _longjmp();
 #endif
 
-/* Make alloca work the best possible way.  */
-#ifdef __GNUC__
-# ifndef atarist
-#  ifndef alloca
-#   define alloca __builtin_alloca
-#  endif
-# endif /* atarist */
-#else
-# ifdef HAVE_ALLOCA_H
-#  include <alloca.h>
-# else
-#  ifndef _AIX
-#   ifndef alloca /* predefined by HP cc +Olibcalls */
-void *alloca ();
-#   endif
-#  endif /* AIX */
-# endif /* HAVE_ALLOCA_H */
-#endif /* __GNUC__ */
-
 #ifndef GC_MALLOC_LIMIT
 #if defined(MSDOS) || defined(__human68k__)
 #define GC_MALLOC_LIMIT 200000
@@ -1203,7 +1184,7 @@ gc_sweep()
     RVALUE *p, *pend, *final_list;
     int freed = 0;
     int i;
-    long free_min = 0;
+    unsigned long free_min = 0;
 
     for (i = 0; i < heaps_used; i++) {
         free_min += heaps[i].limit;
@@ -1600,7 +1581,8 @@ garbage_collect()
 # ifdef nativeAllocA
   if (__stack_past (top, stack_limit)) {
   /* allocate a large frame to ensure app stack cannot grow into GC stack */
-    (volatile void*) nativeAllocA(__stack_depth((void*)stack_limit,(void*)top));
+    (void)(volatile void*) 
+    nativeAllocA(__stack_depth((void*)stack_limit,(void*)top));
   }  
   garbage_collect_0(top);
 # else /* no native alloca() available */
