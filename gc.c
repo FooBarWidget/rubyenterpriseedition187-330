@@ -128,7 +128,8 @@ static VALUE gc_exorcise(VALUE mod)
   return Qnil;
 }
 
-#else /* no api changes */
+#endif /* MBARI_API */
+
 
 static size_t unstressed_malloc_limit = GC_MALLOC_LIMIT;
 
@@ -138,7 +139,6 @@ static size_t unstressed_malloc_limit = GC_MALLOC_LIMIT;
  *
  *  returns current status of GC stress mode.
  *
- *  <i>Only available when MBARI_API extentions are disabled at build time</i>
  */
 
 static VALUE
@@ -159,7 +159,6 @@ gc_stress_get(self)
  *
  *  Since it makes Ruby very slow, it is only for debugging.
  *
- *  <i>Only available when MBARI_API extentions are enabled at build time</i>
  */
 
 static VALUE
@@ -175,8 +174,6 @@ gc_stress_set(self, bool)
     }
     return bool;
 }
-
-#endif /* MBARI_API */
 
 static void run_final();
 static VALUE nomem_error;
@@ -2247,10 +2244,9 @@ Init_GC()
     rb_define_singleton_method(rb_mGC, "limit=", gc_setlimit, 1);
     rb_define_singleton_method(rb_mGC, "growth", gc_growth, 0);
     rb_define_singleton_method(rb_mGC, "exorcise", gc_exorcise, 0);
-#else
+#endif
     rb_define_singleton_method(rb_mGC, "stress", gc_stress_get, 0);
     rb_define_singleton_method(rb_mGC, "stress=", gc_stress_set, 1);
-#endif
     rb_define_method(rb_mGC, "garbage_collect", rb_gc_start, 0);
 
     rb_mObSpace = rb_define_module("ObjectSpace");
