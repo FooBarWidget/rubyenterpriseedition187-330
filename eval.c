@@ -13446,7 +13446,7 @@ cc_purge(cc)
     rb_thread_t cc;
 {
     /* free continuation's stack if it has just died */
-    if (NIL_P(cc->thread) &&
+    if (!NIL_P(cc->thread) &&
         THREAD_DATA(cc->thread)->status == THREAD_KILLED) {
 	  cc->thread = Qnil;
 	  rb_thread_die(cc);  /* can't possibly activate this stack */

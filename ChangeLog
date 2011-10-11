@@ -49,6 +49,14 @@ Mon Oct 17 03:56:12 2011  Yusuke Endoh  <mame@tsg.ne.jp>
 	  store->ex_data.sk.  [ruby-core:28907] [ruby-core:23971]
 	  [ruby-core:18121]
 
+Mon Oct 12 22:35:00 2011  Brent Roman  <brent@mbari.org>
+        
+	* fixed inverted NUL_P test in eval.c(cc_purge)
+        
+Mon Oct 11 17:55:00 2011  Brent Roman  <brent@mbari.org>
+        
+	* always includes GC.stress method, even if MBARI_API enabled
+        
 Mon Oct 10 23:15:00 2011  Brent Roman  <brent@mbari.org>
 
         * MBARI 8 patchset wrapup
