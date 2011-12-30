@@ -629,7 +629,6 @@ sigsegv(sig)
     }
 #endif
 
-    rb_gc_unstress();
     rb_bug("Segmentation fault");
 }
 #endif

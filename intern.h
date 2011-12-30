@@ -253,7 +253,7 @@ VALUE rb_file_directory_p _((VALUE,VALUE));
 /* gc.c */
 NORETURN(void rb_memerror __((void)));
 int ruby_stack_check _((void));
-size_t ruby_stack_length _((VALUE**));
+size_t ruby_stack_length _((VALUE *,VALUE**));
 int rb_during_gc _((void));
 char *rb_source_filename _((const char*));
 void rb_gc_mark_locations _((VALUE*, VALUE*));
@@ -270,7 +270,6 @@ void rb_gc_call_finalizer_at_exit _((void));
 VALUE rb_gc_enable _((void));
 VALUE rb_gc_disable _((void));
 VALUE rb_gc_start _((void));
-void rb_gc_unstress _((void));
 /* hash.c */
 void st_foreach_safe _((struct st_table *, int (*)(ANYARGS), unsigned long));
 void rb_hash_foreach _((VALUE, int (*)(ANYARGS), VALUE));
@@ -381,6 +380,7 @@ VALUE rb_length_by_each _((VALUE));
 /* random.c */
 unsigned long rb_genrand_int32(void);
 double rb_genrand_real(void);
+void rb_reset_random_seed(void);
 /* re.c */
 int rb_memcmp _((const void*,const void*,long));
 int rb_memcicmp _((const void*,const void*,long));
