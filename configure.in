@@ -154,7 +154,8 @@ if test $frame_address = yes; then
 fi
 AC_ARG_ENABLE(mbari-api,
        [  --enable-mbari-api      enable API changes from the MBARI patches. ],
-       [mbari_api=$enableval])
+       [mbari_api=$enableval],
+       [mbari_api=yes])
 if test "$mbari_api" = yes; then
     AC_DEFINE(MBARI_API)
 fi
@@ -620,6 +621,40 @@ powerpc-darwin*)
   ;;
 *)
   AC_FUNC_ALLOCA
+  if test $ac_cv_func_alloca_works = yes; then
+	# On Apple uses llvm-gcc since Xcode 4. llvm-gcc has this nice bug
+	# where __builtin_alloca(0) would return non-NULL with -O0, but NULL
+	# with -O2...
+	AC_CACHE_CHECK(whether alloca(0) returns the stack pointer, rb_cv_alloca_0_returns_stack_pointer,
+	  [AC_TRY_RUN([
+#ifdef HAVE_ALLOCA_H_
+#  include <alloca.h>
+#endif
+#include <stdlib.h>
+int
+main()
+{
+	/* It's important that we assign the result of alloca to a variable!
+	 * If we put it in the if-statement then the compiler's -O2 optimizations
+	 * will optimize it away to "if (true)", thereby bypassing our
+	 * llvm-gcc bug detection! Let's put 'volatile' in there too,
+	 * just in case.
+	 */
+	volatile void *addr = alloca(0);
+    if (addr != NULL) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+],
+		rb_cv_alloca_0_returns_stack_pointer=yes,
+		rb_cv_alloca_0_returns_stack_pointer=no,
+		rb_cv_alloca_0_returns_stack_pointer=no)])
+	if test $rb_cv_alloca_0_returns_stack_pointer = yes; then
+	  AC_DEFINE(ALLOCA_0_RETURNS_STACK_POINTER, 1)
+	fi
+  fi
   ;;
 esac
 AC_FUNC_MEMCMP
