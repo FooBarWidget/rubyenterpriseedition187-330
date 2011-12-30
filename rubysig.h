@@ -234,7 +234,11 @@ __defspfn("mov %0, sp": "=r"(sp))
 #   warning No assembly version of __sp() defined for this CPU.
 #  endif
 # else
-#  define __sp()  ((VALUE *)__builtin_alloca(0))
+#  if ALLOCA_0_RETURNS_STACK_POINTER
+#    define __sp()  ((VALUE *)__builtin_alloca(0))
+#  else
+#    define __sp()  ((VALUE *)__builtin_alloca(sizeof(void *)))
+#  endif /* ALLOCA_0_RETURNS_STACK_POINTER */
 # endif
 
 #else  // not GNUC
