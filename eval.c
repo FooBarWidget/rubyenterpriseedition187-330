@@ -13487,6 +13487,7 @@ rb_thread_atfork()
 {
     rb_thread_t th;
 
+    rb_reset_random_seed();
     if (rb_thread_alone()) return;
     FOREACH_THREAD(th) {
 	if (th != curr_thread) {

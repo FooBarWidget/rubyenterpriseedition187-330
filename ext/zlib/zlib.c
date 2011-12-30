@@ -611,7 +611,7 @@ zstream_append_input(z, src, len)
 
 #define zstream_append_input2(z,v)\
     RB_GC_GUARD(v),\
-    zstream_append_input((z), RSTRING(v)->ptr, RSTRING(v)->len)
+    zstream_append_input((z), (Bytef*)RSTRING_PTR(v), RSTRING_LEN(v))
 
 static void
 zstream_discard_input(z, len)
@@ -2091,7 +2091,7 @@ gzfile_check_footer(gz)
     if (gz->crc != crc) {
 	rb_raise(cCRCError, "invalid compressed data -- crc error");
     }
-    if (gz->z.stream.total_out != length) {
+    if ((gz->z.stream.total_out & 0xFFFFFFFFUL) != length) {
 	rb_raise(cLengthError, "invalid compressed data -- length error");
     }
 }
