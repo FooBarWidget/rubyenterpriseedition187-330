@@ -68,19 +68,7 @@ int _setjmp(), _longjmp();
 #endif
 #define GC_STACK_MAX  (GC_LEVEL_MAX+GC_STACK_PAD)
 
-/* The address of the end of the main thread's application stack. When the
- * main thread is active, application code may not cause the stack to grow
- * past this point. Past this point there's still a small area reserved for
- * garbage collector operations.
- */
-static VALUE *stack_limit;
-/*
- * The address of the end of the current thread's GC stack. When running
- * the GC, the stack may not grow past this point.
- * The value of this variable is reset every time garbage_collect() is
- * called.
- */
-static VALUE *gc_stack_limit;
+static VALUE *stack_limit, *gc_stack_limit;
 
 static size_t malloc_increase = 0;
 static size_t malloc_limit = GC_MALLOC_LIMIT;
@@ -1046,6 +1034,8 @@ VALUE *rb_gc_stack_start = 0;
 VALUE *rb_gc_register_stack_start = 0;
 #endif
 
+VALUE *rb_gc_stack_end = (VALUE *)STACK_GROW_DIRECTION;
+
 
 #ifdef DJGPP
 /* set stack size (http://www.delorie.com/djgpp/v2faq/faq15_9.html) */
@@ -1079,12 +1069,12 @@ VALUE *__sp(void) {
 #endif
 
 #if STACK_GROW_DIRECTION < 0
-# define STACK_LENGTH(start)  ((start) - STACK_END)
+# define STACK_LENGTH  (rb_gc_stack_start - STACK_END)
 #elif STACK_GROW_DIRECTION > 0
-# define STACK_LENGTH(start)  (STACK_END - (start) + 1)
+# define STACK_LENGTH  (STACK_END - rb_gc_stack_start + 1)
 #else
-# define STACK_LENGTH(start)  ((STACK_END < (start)) ? (start) - STACK_END\
-                                           : STACK_END - (start) + 1)
+# define STACK_LENGTH  ((STACK_END < rb_gc_stack_start) ? rb_gc_stack_start - STACK_END\
+                                           : STACK_END - rb_gc_stack_start + 1)
 #endif
 #if STACK_GROW_DIRECTION > 0
 # define STACK_UPPER(a, b) a
@@ -1107,31 +1097,15 @@ ruby_stack_length(base)
     VALUE **base;
 {
     SET_STACK_END;
-    VALUE *start;
-    if (rb_curr_thread == rb_main_thread) {
-	start = rb_gc_stack_start;
-    } else {
-	start = rb_curr_thread->stk_base;
-    }
     if (base) *base = STACK_UPPER(start, STACK_END);
-    return STACK_LENGTH(start);
+    return STACK_LENGTH;
 }
 
 int
 ruby_stack_check()
 {
     SET_STACK_END;
-    if (!rb_main_thread || rb_curr_thread == rb_main_thread) {
-	return __stack_past(stack_limit, STACK_END);
-    } else {
-	/* ruby_stack_check() is only called periodically, but we want to
-	 * detect a stack overflow before the thread's guard area is accessed.
-	 * So we append a '+ getpagesize()' to the address check.
-	 *
-	 * TODO: support architectures on which the stack grows upwards.
-	 */
-	return __stack_past(rb_curr_thread->guard + getpagesize(), STACK_END);
-    }
+    return __stack_past(stack_limit, STACK_END);
 }
 
 /*
@@ -1142,24 +1116,22 @@ ruby_stack_check()
 #if STACK_WIPE_METHOD
 void rb_gc_wipe_stack(void)
 {
-  if (rb_curr_thread) {
-    VALUE *stack_end = rb_curr_thread->gc_stack_end;
-    VALUE *sp = __sp();
-    rb_curr_thread->gc_stack_end = sp;
+  VALUE *stack_end = rb_gc_stack_end;
+  VALUE *sp = __sp();
+  rb_gc_stack_end = sp;
 #if STACK_WIPE_METHOD == 1
 #warning clearing of "ghost references" from the call stack has been disabled
 #elif STACK_WIPE_METHOD == 2  /* alloca ghost stack before clearing it */
-    if (__stack_past(sp, stack_end)) {
-      size_t bytes = __stack_depth((char *)stack_end, (char *)sp);
-      STACK_UPPER(sp = nativeAllocA(bytes), stack_end = nativeAllocA(bytes));
-      __stack_zero(stack_end, sp);
-    }
+  if (__stack_past(sp, stack_end)) {
+    size_t bytes = __stack_depth((char *)stack_end, (char *)sp);
+    STACK_UPPER(sp = nativeAllocA(bytes), stack_end = nativeAllocA(bytes));
+    __stack_zero(stack_end, sp);
+  }
 #elif STACK_WIPE_METHOD == 3    /* clear unallocated area past stack pointer */
-    __stack_zero(stack_end, sp);  /* will crash if compiler pushes a temp. here */
+  __stack_zero(stack_end, sp);  /* will crash if compiler pushes a temp. here */
 #else
 #error unsupported method of clearing ghost references from the stack
 #endif
-  }
 }
 #else
 #warning clearing of "ghost references" from the call stack completely disabled
@@ -2123,12 +2095,10 @@ garbage_collect_0(VALUE *top_frame)
     rb_mark_table_prepare();
     init_mark_stack();
 
+    gc_mark((VALUE)ruby_current_node);
+
     /* mark frame stack */
-    if (rb_curr_thread == rb_main_thread)
-	frame = ruby_frame;
-    else
-	frame = rb_main_thread->frame;
-    for (; frame; frame = frame->prev) {
+    for (frame = ruby_frame; frame; frame = frame->prev) {
 	rb_gc_mark_frame(frame);
 	if (frame->tmp) {
 	    struct FRAME *tmp = frame->tmp;
@@ -2138,29 +2108,11 @@ garbage_collect_0(VALUE *top_frame)
 	    }
 	}
     }
-    
-    if (rb_curr_thread == rb_main_thread) {
-	gc_mark((VALUE)ruby_current_node);
-	gc_mark((VALUE)ruby_scope);
-	gc_mark((VALUE)ruby_dyna_vars);
-    } else {
-	gc_mark((VALUE)rb_main_thread->node);
-	gc_mark((VALUE)rb_main_thread->scope);
-	gc_mark((VALUE)rb_main_thread->dyna_vars);
-
-	/* scan the current thread's stack */
-	rb_gc_mark_locations(top_frame, rb_curr_thread->stk_base);
-    }
-
+    gc_mark((VALUE)ruby_scope);
+    gc_mark((VALUE)ruby_dyna_vars);
     if (finalizer_table) {
 	mark_tbl(finalizer_table);
     }
-
-    /* If this is not the main thread, we need to scan the C stack, so
-     * set top_frame to the end of the C stack.
-     */
-    if (rb_curr_thread != rb_main_thread)
-	top_frame = rb_main_thread->stk_pos;
 
 #if STACK_GROW_DIRECTION < 0
     rb_gc_mark_locations(top_frame, rb_gc_stack_start);
@@ -2181,7 +2133,6 @@ garbage_collect_0(VALUE *top_frame)
     rb_gc_mark_locations((VALUE*)((char*)STACK_END + 2),
 			 (VALUE*)((char*)rb_gc_stack_start + 2));
 #endif
-
     rb_gc_mark_threads();
 
     /* mark protected global variables */
@@ -2239,17 +2190,17 @@ garbage_collect()
 
 #if STACK_WIPE_SITES & 0x400
 # ifdef nativeAllocA
-  if ((!rb_main_thread || rb_curr_thread == rb_main_thread) && __stack_past (top, stack_limit)) {
-    /* allocate a large frame to ensure app stack cannot grow into GC stack */
+  if (__stack_past (top, stack_limit)) {
+  /* allocate a large frame to ensure app stack cannot grow into GC stack */
     (volatile void*) nativeAllocA(__stack_depth((void*)stack_limit,(void*)top));
-  }
+  }  
   garbage_collect_0(top);
 # else /* no native alloca() available */
   garbage_collect_0(top);
-  if (rb_curr_thread) {
+  {
     VALUE *paddedLimit = __stack_grow(gc_stack_limit, GC_STACK_PAD);
-    if (__stack_past(rb_curr_thread->gc_stack_end, paddedLimit))
-      rb_curr_thread->gc_stack_end = paddedLimit;
+    if (__stack_past(rb_gc_stack_end, paddedLimit))
+      rb_gc_stack_end = paddedLimit;
   }
   rb_gc_wipe_stack();  /* wipe the whole stack area reserved for this gc */  
 # endif
@@ -3132,6 +3083,9 @@ Init_GC()
 {
     VALUE rb_mObSpace;
 
+#if !STACK_GROW_DIRECTION
+    rb_gc_stack_end = stack_grow_direction(&rb_mObSpace);
+#endif
     rb_mGC = rb_define_module("GC");
     rb_define_singleton_method(rb_mGC, "start", rb_gc_start, 0);
     rb_define_singleton_method(rb_mGC, "enable", rb_gc_enable, 0);
