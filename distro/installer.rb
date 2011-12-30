@@ -27,7 +27,6 @@ class Installer
 		@destdir = strip_trailing_slashes(options[:destdir])
 		@install_useful_gems = options[:install_useful_gems]
 		@use_tcmalloc = options[:tcmalloc]
-		@fast_threading = options[:fast_threading]
 		if !options[:extra_configure_args].empty?
 			@extra_configure_args = options[:extra_configure_args].join(" ")
 		end
@@ -235,16 +234,6 @@ private
 	
 	def compile_ruby
 		Dir.chdir("source") do
-			if fast_threading_patch_applied?
-				if !@fast_threading
-					sh "patch -p1 -R < ../fast-threading.patch"
-				end
-			else
-				if @fast_threading
-					sh "patch -p1 < ../fast-threading.patch"
-				end
-			end
-			
 			# No idea why, but sometimes 'make' fails unless we do this.
 			sh("mkdir -p .ext/common")
 			
@@ -624,10 +613,6 @@ private
 			end
 		end
 	end
-	
-	def fast_threading_patch_applied?
-		File.read("eval.c") =~ /PROT_EMPTY/
-	end
 end
 
 options = { :tcmalloc => true, :install_dev_docs => true, :install_useful_gems => true, :extra_configure_args => [] }
@@ -666,10 +651,6 @@ parser = OptionParser.new do |opts|
 	end
 	opts.on("--no-dev-docs", "Do not install Ruby developer#{newline}documentation.") do
 		options[:install_dev_docs] = false
-	end
-	opts.on("--fast-threading", "Enable zero-copy context switching#{newline}" <<
-	                            "(experimental)") do
-		options[:fast_threading] = true
 	end
 	opts.on("-h", "--help", "Show this message.") do
 		puts opts
