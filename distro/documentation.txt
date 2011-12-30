@@ -16,7 +16,6 @@ link:http://railsbench.rubyforge.org/[RailsBench],
 http://rubyforge.org/tracker/download.php/426/1700/11497/2087/ruby-track-alloc.patch[Sylvain Joyeux's object allocation patch],
 link:http://ph7spot.com/articles/caller_for_all_threads[caller_for_all_threads],
 Darryl Gove's and Miriam Blatt's link:http://blogs.sun.com/d/entry/ruby_performance_gains_on_sparc[Sparc optimization patches],
-Joe Damato's and Aman Gupta's http://timetobleed.com/fixing-threads-in-ruby-18-a-2-10x-performance-boost/[zero-copy context switching patch],
 Brent Roman's http://sites.google.com/site/brentsrubypatches[MBARI patch set].
 
 
