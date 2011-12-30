@@ -936,6 +936,10 @@ flo_cmp(x, y)
 	break;
 
       case T_BIGNUM:
+	if (isinf(a)) {
+	    if (a > 0.0) return INT2FIX(1);
+	    else return INT2FIX(-1);
+	}
 	b = rb_big2dbl(y);
 	break;
 
@@ -1447,7 +1451,7 @@ ruby_float_step(from, to, step, excl)
 
 	if (err>0.5) err=0.5;
 	n = floor(n + err);
-	if (!excl) n++;
+	if (!excl || ((long)n)*unit+beg < end) n++;
 	for (i=0; i<n; i++) {
 	    rb_yield(rb_float_new(i*unit+beg));
 	}
