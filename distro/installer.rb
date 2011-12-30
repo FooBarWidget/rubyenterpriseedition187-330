@@ -37,6 +37,9 @@ class Installer
 		
 		show_welcome_screen
 		check_dependencies || exit(1)
+		# Force usage of automatically detected non-broken compiler
+		ENV['CC'] = PlatformInfo::CC
+		ENV['CXX'] = PlatformInfo::CXX
 		ask_installation_prefix
 		
 		steps = []

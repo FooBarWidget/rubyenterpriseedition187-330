@@ -72,10 +72,18 @@ end
 # Namespace which contains the different dependencies that Ruby Enterprise Edition may require.
 # See Dependency for more information.
 module Dependencies # :nodoc: all
+	APPLE_COMPILER_INSTALL_INSTRUCTIONS =
+		"Please install the Apple Development Tools: http://developer.apple.com/tools/; " +
+		"Please note that since Xcode 4, Apple uses llvm-gcc as its default compiler, which " +
+		"is known to contain bugs. Some of these bugs caused Ruby Enterprise Edition to be " +
+		"incorrectly compiled, causing crashes. If you have the Development Tools installed " +
+		"then it means that this installer failed to find the non-llvm version of the compiler. " +
+		"In that case, please tell us about this problem."
+
 	include PlatformInfo
 	
 	CC = Dependency.new do |dep|
-		dep.name = "C compiler"
+		dep.name = "Non-broken C compiler"
 		dep.define_checker do |result|
 			if PlatformInfo::CC.nil?
 				result.not_found
@@ -93,13 +101,13 @@ module Dependencies # :nodoc: all
 				dep.install_command = "emerge -av gcc"
 			end
 		elsif RUBY_PLATFORM =~ /darwin/
-			dep.install_instructions = "Please install the Apple Development Tools: http://developer.apple.com/tools/"
+			dep.install_instructions = APPLE_COMPILER_INSTALL_INSTRUCTIONS
 		end
 		dep.website = "http://gcc.gnu.org/"
 	end
 	
 	CXX = Dependency.new do |dep|
-		dep.name = "C++ compiler"
+		dep.name = "Non-broken C++ compiler"
 		dep.define_checker do |result|
 			if PlatformInfo::CXX.nil?
 				result.not_found
@@ -117,7 +125,7 @@ module Dependencies # :nodoc: all
 				dep.install_command = "emerge -av gcc"
 			end
 		elsif RUBY_PLATFORM =~ /darwin/
-			dep.install_instructions = "Please install the Apple Development Tools: http://developer.apple.com/tools/"
+			dep.install_instructions = APPLE_COMPILER_INSTALL_INSTRUCTIONS
 		end
 		dep.website = "http://gcc.gnu.org/"
 	end

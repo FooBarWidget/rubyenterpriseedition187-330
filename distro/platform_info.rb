@@ -201,11 +201,29 @@ private
 	end
 	
 	def self.determine_c_compiler
-		return ENV['CC'] || find_command('gcc') || find_command('cc')
+		result = ENV['CC'] || find_command('gcc') || find_command('cc')
+		if broken_apple_llvm_gcc_compiler?(result)
+			result = find_command('gcc-4.2')
+		end
+		return result
 	end
 	
 	def self.determine_cxx_compiler
-		return ENV['CXX'] || find_command('g++') || find_command('c++')
+		result = ENV['CXX'] || find_command('g++') || find_command('c++')
+		if broken_apple_llvm_gcc_compiler?(result)
+			result = find_command('g++-4.2')
+		end
+		return result
+	end
+
+	# Apple ships llvm-gcc as the default gcc since Xcode 4, yet llvm-gcc
+	# contains many bugs that could crash Ruby Enterprise Edition!!
+	def self.broken_apple_llvm_gcc_compiler?(path)
+		if RUBY_PLATFORM =~ /darwin/ && (path == "/usr/bin/gcc" || path == "/usr/bin/g++")
+			return `#{path} --version` =~ /llvm/
+		else
+			return false
+		end
 	end
 	
 	# Returns true if the Solaris version of ld is in use.
