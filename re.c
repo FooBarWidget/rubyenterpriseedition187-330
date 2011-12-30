@@ -1496,19 +1496,17 @@ VALUE
 rb_reg_regcomp(str)
     VALUE str;
 {
-    volatile VALUE save_str = str;
-    if (reg_cache && RREGEXP(reg_cache)->len == RSTRING(str)->len
-	&& case_cache == ruby_ignorecase
-	&& kcode_cache == reg_kcode
-	&& memcmp(RREGEXP(reg_cache)->str, RSTRING(str)->ptr, RSTRING(str)->len) == 0)
-	return reg_cache;
-
+  if (!reg_cache || RREGEXP(reg_cache)->len != RSTRING(str)->len
+     || case_cache != ruby_ignorecase
+     || kcode_cache != reg_kcode
+     || memcmp(RREGEXP(reg_cache)->str, RSTRING(str)->ptr, RSTRING(str)->len)) {
     case_cache = ruby_ignorecase;
     kcode_cache = reg_kcode;
-    reg_cache = rb_reg_new(RSTRING(str)->ptr, RSTRING(str)->len, ruby_ignorecase);
+    reg_cache = rb_reg_new(RSTRING(str)->ptr,RSTRING(str)->len,ruby_ignorecase);
     OBJ_INFECT(reg_cache, str);
-    RB_GC_GUARD(save_str);
-    return reg_cache;
+    RB_GC_GUARD(str);
+  }
+  return reg_cache;
 }
 
 static int

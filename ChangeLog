@@ -1,3 +1,243 @@
+Wed Dec 28 21:34:23 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* string.c (rb_str_hash): randomize hash to avoid algorithmic
+	  complexity attacks. CVE-2011-4815
+
+	* st.c (strhash): ditto.
+
+	* string.c (Init_String): initialization of hash_seed to be at the
+	  beginning of the process.
+
+	* st.c (Init_st): ditto.
+
+Thu Dec  8 11:57:04 2011  Tanaka Akira  <akr@fsij.org>
+
+	* inits.c (rb_call_inits): call Init_RandomSeed at first.
+
+	* random.c (seed_initialized): defined.
+	  (fill_random_seed): extracted from random_seed.
+	  (make_seed_value): extracted from random_seed.
+	  (rb_f_rand): initialize random seed at first.
+	  (initial_seed): defined.
+	  (Init_RandomSeed): defined.
+	  (Init_RandomSeed2): defined.
+	  (rb_reset_random_seed): defined.
+	  (Init_Random): call Init_RandomSeed2.
+
+Sat Dec 10 20:44:23 2011  Tanaka Akira  <akr@fsij.org>
+
+	* lib/securerandom.rb: call OpenSSL::Random.seed at the
+	  SecureRandom.random_bytes call.
+	  insert separators for array join.
+	  patch by Masahiro Tomita.  [ruby-dev:44270]
+
+Mon Oct 17 04:20:22 2011  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* mkconfig.rb: fix for continued lines.  based on a patch from
+	  Marcus Rueckert <darix AT opensu.se> at [ruby-core:20420].
+
+Mon Oct 17 04:19:39 2011  Yukihiro Matsumoto  <matz@ruby-lang.org>
+
+	* numeric.c (flo_cmp): Infinity is greater than any bignum
+	  number.  [ruby-dev:38672]
+
+	* bignum.c (rb_big_cmp): ditto.
+
+Mon Oct 17 03:56:12 2011  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* ext/openssl/ossl_x509store.c (ossl_x509store_initialize): initialize
+	  store->ex_data.sk.  [ruby-core:28907] [ruby-core:23971]
+	  [ruby-core:18121]
+
+Mon Oct 12 22:35:00 2011  Brent Roman  <brent@mbari.org>
+        
+	* fixed inverted NUL_P test in eval.c(cc_purge)
+        
+Mon Oct 11 17:55:00 2011  Brent Roman  <brent@mbari.org>
+        
+	* always includes GC.stress method, even if MBARI_API enabled
+        
+Mon Oct 10 23:15:00 2011  Brent Roman  <brent@mbari.org>
+
+        * MBARI 8 patchset wrapup
+        
+	* removed break; after JUMP_TAG
+        
+        * fixed GCC 4.6 compile warnings in eval.c and gc.c
+
+Thu Jun 30 12:52:56 2011  WATANABE Hirofumi  <eban@ruby-lang.org>
+
+	* ext/tk/extconf.rb (intptr_t, uintptr_t): support for the latest ActiveTcl with mingw.
+
+Sun Jun 26 17:52:32 2011  Nobuhiro Iwamatsu  <iwamatsu@nigauri.org>
+
+        * ext/openssl/ossl_ssl.c: By trunk@31346, function check of SSLv2 is executed.
+        However, the problem is not revised in this.
+        This adds the control of using function of SSLv2 in made macro by function check.
+
+Sun Jun 26 17:52:32 2011  Nobuhiro Iwamatsu  <iwamatsu@nigauri.org>
+
+	* ext/openssl/extconf.rb: Should check SSLv2_*method.
+	  openssl compiled with "no-ssl2" the extconf don't fail
+	  when running `make' having this compilation errors.
+	  Patched by Laurent Arnoud. fixes #4562, #4556
+
+Sun Jun 26 17:46:43 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* ext/tk/extconf.rb: copy from trunk, as requested by Hidetoshi NAGAI.
+
+Thu Jun 23 18:38:43 2011  Hiroshi Nakamura  <nahi@ruby-lang.org>
+
+	backported r26281 from ruby_1_8
+
+	* lib/webrick/accesslog.rb (WEBrick::AccessLog.format): log parameter
+	  embedding did not work. See #4913.
+
+	* test/webrick/test_accesslog.rb: Add for test it.
+
+Thu Jun 16 22:55:02 2011  Hiroshi Nakamura  <nahi@ruby-lang.org>
+
+	* test/test_securerandom.rb: Add testcase.  This testcase does NOT aim
+	  to test cryptographically strongness and randomness.  It includes
+	  the test for PID recycle issue of OpenSSL described in #4579 but
+	  it's disabled by default.
+
+Mon Jun 13 18:33:04 2011  Tanaka Akira  <akr@fsij.org>
+
+	* lib/securerandom.rb (SecureRandom.random_bytes): modify PRNG state
+	  to prevent random number sequence repeatation at forked
+	  child process which has same pid.
+	  reported by Eric Wong.  [ruby-core:35765]
+
+Thu Jun  2 18:33:51 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* variable.c (rb_const_get_0):  Fix  previous change.   There were
+	  possibilities   when   an   autoload-specified   library   lacks
+	  definition of  the constant  it was bound  to.  Once  after such
+	  library had  already beed loaded, the autoload  engine shall not
+	  reload  it.   Instead  the  interpreter have  to  consider  such
+	  constant nonexistent.  It results in a const_missing situation.
+
+	* variable.c (rb_autoload_load): ditto.
+
+	* variable.c (autoload_node): ditto.
+
+Thu Jun  2 18:28:58 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* variable.c (rb_autoload_load):  There is a  race condition while
+	  autoloading.  When two or more threads touch a single autoloaded
+	  constant at  a time,  one of them  does the require,  but others
+	  behave  oddly.   To  fix  this  situation we  now  refrain  from
+	  deleting the autoload table while someone is doing the autoload.
+	  That  deletion is  deferred to  a  point where  a require  ended
+	  successfully.  Doing so make it possible for multiple threads to
+	  enter autoloading at the same  time but the require is protected
+	  against  multiple simultaneous  entrance anyway  so all  but one
+	  thread  gets blocked  at that  point.   So with  it, touching  a
+	  constant that gets autoloaded cause those threads to block until
+	  there is another one that does the same thing.
+	  [ruby-core:36308] (#921)
+
+	* variable.c (rb_const_get_0): ditto.
+
+	* variable.c (autoload_node): ditto.
+
+	* variable.c (autoload_delete): ditto.
+
+Mon May 30 10:58:17 2011  Hiroshi Nakamura  <nahi@ruby-lang.org>
+
+	* lib/logger.rb (Logger::ProgName): do not depend on subversion
+	  keyword ($Id$). ProgName with revision number was written in the
+	  header line of each logfile for ease of tracking what version user
+	  is using in troubleshooting.  Logger is already stable enough.
+
+Sat May 21 07:33:54 2011  Yusuke Endoh  <mame@tsg.ne.jp>
+
+	* ext/zlib/zlib.c (zstream_append_input2): add RB_GC_GUARD.
+	  This caused failure when test/csv is executed with GC.stress = true.
+
+Sat May 21 05:43:03 2011  URABE Shyouhei  <shyouhei@ruby-lang.org>
+
+	* eval.c (rb_thread_atfork): When a ruby process forks, its random
+	  seed shall be reinitialized to prevent CVE-2003-0900 situation.
+	  This bug affects for 1.8 and earlier series, but not for 1.9.
+	  fixed [ruby-core:34944].
+
+	* io.c (pipe_open): ditto.
+
+	* random.c (rb_reset_random_seed): ditto.
+
+	* intern.h (rb_reset_random_seed): ditto.
+
+Sat May 21 04:55:15 2011  Akinori MUSHA  <knu@iDaemons.org>
+
+	* lib/uri/generic.rb (#route_from_path): Fix a bug where
+	  URI('http://h/b/').route_to('http://h/b') wrongly returned './'
+	  (should be '../b'). [Bug #4476]
+
+Sat May 21 04:54:20 2011  Akinori MUSHA  <knu@iDaemons.org>
+
+	* lib/fileutils.rb (FileUtils#touch): Fix corrupted output.
+	  ref [ruby-dev:43401]
+
+Sat May 21 02:10:09 2011  Yukihiro Matsumoto  <matz@ruby-lang.org>
+
+	* re.h (RMATCH_REGS): parenthesize cast expression.  suggested
+	  from Nikolai Weibull in [ruby-core:35825].
+
+Sat May 21 01:32:08 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	backported r31286 from trunk
+
+	* numeric.c (ruby_float_step): wrong loop condition.
+	  fixes [ruby-core:35753], reported by Joey Zhou.
+
+	* test/ruby/test_range.rb (TestRange#test_step_ruby_core_35753):
+	  test above change.
+
+Sat May 21 00:55:21 2011  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/zlib/zlib.c (gzfile_check_footer): ISIZE (Input SIZE) in gzip's
+	header is the size of uncompressed input data modulo 2^32.
+	[ruby-core:34481] http://www.ietf.org/rfc/rfc1952.txt
+
+Fri May 20 23:46:44 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/socket/{getaddrinfo,getnameinfo}.c: include winsock2.h only when
+	  specified to use winsock2 by user.
+	  this problem is reported by kosaki.
+
+Fri May 20 23:23:45 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* ext/socket/socket.c (make_addrinfo): skip IPv6 addresses when ruby
+	  doesn't support IPv6 but system supports it.
+	  [ruby-dev:42944] (#4230)
+
+Fri May 20 23:10:07 2011  NAKAMURA Usaku  <usa@ruby-lang.org>
+
+	* win32/README.win32: note to need NT based OS to build ruby.
+
+	* win32/{configure.bat,setup.mak}: backport current build method from
+	  trunk. [ruby-dev:42893] (#4206)
+
+Fri May 20 23:06:31 2011  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
+
+	* Backported the fix at
+	  Mon Sep 13 09:23:58 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/openssl/ossl_bn.c (ossl_bn_is_prime): fix comparison
+	  with rb_scan_args. Before this fix, OpenSSL::BN#prime?
+	  is fully broken.
+
+Fri May 20 23:06:31 2011  NAKAMURA, Hiroshi  <nahi@ruby-lang.org>
+
+	* Backported the fix at
+	  Mon Oct  4 09:30:42 2010  NARUSE, Yui  <naruse@ruby-lang.org>
+
+	* ext/openssl/lib/openssl/bn.rb (Integer#to_bn): OpenSSL::BN.new
+	  accepts only Strings, so call Integer#to_s(16).
+	  16 is for an optimization. [ruby-dev:42336]
+
 Fri Feb 18 21:18:55 2011  Shugo Maeda  <shugo@ruby-lang.org>
 
 	* test/ruby/test_exception.rb (TestException::test_to_s_taintness_propagation):
@@ -60,7 +300,7 @@ Thu Dec  2 21:13:42 2010  URABE Shyouhei  <shyouhei@ruby-lang.org>
 
 Wed Nov 24 18:24:26 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
 
-	* ext/socket/extconf.rb: backrorted entirely from ruby_1_8, with small
+	* ext/socket/extconf.rb: backported entirely from ruby_1_8, with small
 	  modifications for the difference of mkmf.rb.
 
 Wed Nov 24 16:24:24 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
@@ -71,8 +311,8 @@ Wed Nov 24 16:24:24 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 Wed Nov 24 16:18:02 2010  URABE Shyouhei  <shyouhei@ruby-lang.org>
 
 	* win32/Makefile.sub ($(RCFILES)): no revision.h in this
-          branch, a patch from Luis Lavena <luislavena at gmail.com>.
-          [ruby-core:33310]
+	  branch, a patch from Luis Lavena <luislavena at gmail.com>.
+	  [ruby-core:33310]
 
 	* cygwin/GNUmakefile.in ($(RCFILES)): ditto.
 
@@ -140,7 +380,7 @@ Thu Oct  7 18:10:35 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 Sun Oct  3 18:30:23 2010  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* parse.y (rb_intern): should check symbol table overflow.
-	 #3900 [ruby-dev:42330]
+	  #3900 [ruby-dev:42330]
 
 Fri Oct  1 15:12:05 2010  NAKAMURA Usaku  <usa@ruby-lang.org>
 
@@ -1441,6 +1681,24 @@ Mon Mar  9 08:54:47 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 	* parse.y (IS_BEG): EXPR_CLASS should be treated like EXPR_BEG.
 	  [ruby-core:21453]
 
+Wed Mar 4 12:01:19 2009  Brent Roman  <brent@mbari.org>
+        
+        * rubysig.h:  assume non-Apple gcc on PowerPC is not using -mregnames
+        
+        * version.h:  bumped date
+        
+Wed Mar 1 12:01:19 2009  Brent Roman  <brent@mbari.org>
+        
+        * eval.c:  fixed missed volatile qualifiers
+        
+        * version.h:  bumped date, MBARI version 8A --> 8B
+        
+Wed Feb 27 12:01:19 2009  Brent Roman  <brent@mbari.org>
+        
+        * rubysig.c:  added support for __anyPowerPC__
+        
+        * version.h:  bumped date
+
 Wed Feb 25 15:15:52 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* node.h (rb_thread_raised_clear): should not clear flags other than
@@ -1462,6 +1720,16 @@ Wed Feb 25 14:57:18 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	* win32/win32.c (winnt_stat): gets rid of strange behavior of
 	  GetFileAttributes().  [ruby-core:21269]
 
+Wed Feb 25 12:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * gc.c:  default GC.limit=2e6*sizeof(VALUE)
+        
+        * eval.c:  added RB_GC_GUARDs to eval_slit() & more volatile tweaks
+        
+        * re.c:  removed unneeded volatile qualifier & copy in rb_regcomp()
+        
+        * version.h:  bumped date, MBARI version 7A --> 8A
+
 Tue Feb 24 02:44:39 2009  Masatoshi SEKI  <m_seki@mva.biglobe.ne.jp>
 
 	* lib/erb.rb (PercentScanner): remove PercentScanner. fixed % after
@@ -1473,6 +1741,20 @@ Tue Feb 24 02:35:29 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* hash.c (rb_hash_s_create): set nil as the value if assoc length
 	  is not enough.  [ruby-core:21249]
+
+Tue Feb 24 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * cofigure.in:  added --enable-mbari-api and --with-wipe-sites
+
+        * signal.c:  removed CHECK_INTS after kill
+        
+        * test/ruby/suicide.rb:  add tiny delay to let signal propogate
+        
+        * gc.c:  save regs properly on main stack before marking it!
+        
+        * eval.c:  numerous corrections in use of volatile variables w/setjmp()
+        
+        * version.h:  bumped date, MBARI version 7+ --> 7A
 
 Sun Feb 22 22:08:45 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
@@ -1613,21 +1895,27 @@ Sun Feb 15 04:21:42 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 	  a patch from Alan Johnson <alan.wayne.johnson at gmail.com> in 
 	  [ruby-core:19982].
 
-Fri Feb 13 19:18:42 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
-
-	* lib/logger.rb (ProgName): fixed for svn, based on a patch from
-	  Nobuhiro IMAI at [ruby-dev:37108].
-
 Sun Feb 15 04:17:40 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 
 	* lib/webrick/httprequest.rb (WEBrick::HTTPRequest#read_request_line):
 	  use non-greedy match for path retrieval to avoid huge recursion
 	  for insanely long path.
 
+Fri Feb 13 19:18:42 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+
+	* lib/logger.rb (ProgName): fixed for svn, based on a patch from
+	  Nobuhiro IMAI at [ruby-dev:37108].
+
 Fri Feb 13 19:04:54 2009  Keiju Ishitsuka  <keiju@ruby-lang.org>
 
 	* shell/command-processor.rb: undefined method `top_level_test' in
   	  Shell#test. [ruby-list:45634]
+
+Fri Feb 13 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * signal.c:  CHECK_INTS after kill in case of suicide
+        
+        * version.h:  bumped date
 
 Tue Feb 10 20:00:52 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
@@ -1648,6 +1936,12 @@ Wed Feb 11 23:37:35 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 	  Shin").  [ruby-talk:273360]
 	  back ported from 1.9. fix [ruby-core:19791]
 
+Tue Feb 10 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * gc.c:  don't redundantly mark stack before base of current thread
+        
+        * version.h:  bumped date
+
 Mon Feb  9 17:35:38 2009  NAKAMURA Usaku  <usa@ruby-lang.org>
 
 	* win32/win32.c (rb_w32_accept): secure fd before accept because if
@@ -1665,6 +1959,23 @@ Mon Feb  9 13:40:21 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 
 	* ext/stringio/stringio.c (strio_ungetc): should allow ungetc at
 	  the top of the buffer.  ref #701
+
+Mon Feb 09 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  default values for STACK_WIPE_SITES if x86_64
+                      cast builtin_alloca result to (VALUE *)
+        
+        * gc.c:  don't use builtin-frame-address at all
+        
+        * version.h:  bumped date
+
+Sun Feb 08 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  changed default values for STACK_WIPE_SITES
+        
+        * gc.c:  don't trust config's USE_BUILTIN_FRAME_ADDRESS
+        
+        * version.h:  bumped date
 
 Thu Feb  5 09:38:48 2009  NARUSE, Yui  <naruse@ruby-lang.org>
 
@@ -1770,6 +2081,15 @@ Fri Jan 23 11:49:45 2009  Shugo Maeda  <shugo@ruby-lang.org>
 
 	* test/rexml/test_document.rb: ditto.
 
+Thu Jan 23 00:01:19 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  remapped wipe methods to avoid values > 9
+                      added cases for __ppc64__ and __x86_64__
+        
+        * missing/alloca.c:  made 64-bit clean
+        
+        * version.h:  bumped date
+        
 Thu Jan 22 15:19:39 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* marshal.c (marshal_load): arg.data is no longer a VALUE but a
@@ -1820,6 +2140,21 @@ Mon Jan 19 18:25:28 2009  Tanaka Akira  <akr@fsij.org>
 	  rb_broken_glibc_ia64_erfc.
 	  [ruby-core:18228]
 
+Sun Jan 18 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  added support for STACK_WIPE_METHOD==5 (x86 asm)
+
+        * gc.c:       allow another STACK_WIPE_METHOD
+
+        * version.h:  bumped date
+
+
+Sat Jan 17 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * gc.c:     use separate gc stack so it never need be wiped
+
+        * version.h:  bumped date
+
 Sat Jan 17 12:16:10 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 
 	* random.c (Init_Random): always initialize seed.
@@ -1833,15 +2168,46 @@ Fri Jan 16 10:59:31 2009  Yukihiro Matsumoto  <matz@ruby-lang.org>
 
 	* eval.c (PUSH_CREF): use NEW_CREF().
 
+Fri Jan 16 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * gc.c:     added GC_STACK_PAD, renamed stack_gc_limit->gc_stack_limit
+                    optionally wipe the entire GC stack after each gc pass
+        
+        * rubysig.h:  default STACK_WIPE_SITES changed to 0x4770
+        
+        * version.h:  bumped date
+
 Thu Jan 15 14:34:32 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* gc.c (STACK_LEVEL_MAX, ruby_stack_length): returns size_t.
 	  [ruby-core:18207]
+
 Wed Jan 14 10:39:56 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* stable/ext/socket/socket.c (NI_MAXHOST, NI_MAXSERV): fixed invalid
 	  preprocessor directives.  a patch from Peter Bowen at
 	  [ruby-core:18211].
+
+Wed Jan 14 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * eval.c:     declare wipe_after with gnu always_inline attribute
+        
+        * rubysig.h:  use alloca(0) to get sp for all CPU except PowerPC
+                      (less likely to trash stack when clearing it)
+        
+        * version.h:  bumped date
+
+
+Sun Jan 13 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  moved #defs to configure alloca here from gc.c
+                      added missing # to #else
+        
+        * gc.c: removed #defs to configurure alloca
+                set_stack_size must handle signed rlim_t for Darwin & BSD Unix
+                
+        * version.h:  bumped date
+
 
 Tue Jan 13 04:40:30 2009  Shugo Maeda  <shugo@ruby-lang.org>
 
@@ -1855,6 +2221,22 @@ Mon Jan 12 00:23:37 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* gc.c (rb_gc_call_finalizer_at_exit): self-referencing finalizers
 	  cannot be invoked.  [ruby-dev:35681]
+
+Sun Jan 11 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * rubysig.h:  added support for multiple STACK_WIPE_METHODs
+                      added __stack_depth()
+                      added 2nd param to stack_past()
+                      __sp() returns stack pointer in an efficent, portable way                     
+        
+        * gc.c: STACK_END uses __sp()
+                STACK_UPPER now takes only two parameters
+                added rb_gc_wipe_stack()               
+                rb_mark_tbl() and mark_hash() implemented as #define macros
+                added STACK_END parameters to __stack_past() invocations
+                exploited missed opportunities for tail recursion in markchilren
+                
+        * version.h:  bumped date
 
 Sun Jan 11 11:33:27 2009  Shugo Maeda  <shugo@ruby-lang.org>
 
@@ -1883,6 +2265,20 @@ Tue Jan  6 09:03:35 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	* parse.y (yylex): 8 and 9 in octal integer should cause compile
 	  error.  [ruby-dev:35729]
 
+Mon Jan  5 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * common.mk:  added dependency on rubysig.h to version.h     
+        
+        * eval.c:  added wipeAfter and STACK_WIPE_SITES cofiguration options
+        
+        * gc.c: added STACK_WIPE_SITES cofiguration options
+                added GC.exorcise method
+        
+        * rubysig.h:  added STACK_WIPE_SITES cofiguration options
+                      when available, use gcc asm to optimize wipe_stack
+        
+        * version.h:  include STACK_WIPE_SITES options in MBARI release string
+
 Mon Jan  5 11:14:39 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* eval.c (rb_thread_schedule): runs deferred finalizers.
@@ -1898,6 +2294,21 @@ Mon Jan  5 11:14:39 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	  finalizers before explicit GC.start or the process termination.
 	  [ruby-core:18045]
 
+Sun Jan  4 20:15:36 2009  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  eliminated up_stk_extent(), wipe_stack in rb_thread_switch
+        
+        * gc.c: removed lev counter args, check stack pointer instead
+                streamlined SET_STACK_END and STACK_END, stack_length(), etc.
+                added TOP_FRAME to use gcc's builtin frame_address
+                optimized is_heap_pointer()
+                gc_mark_rest() does not need to copy entire mark_stack!
+                added set_stack_size() to properly hande RLIM_INFINITY
+                
+        * rubysig.h:  repaired broken pseudo preemptive thread switching
+                      removed rb_gc_malloc_increase & limit
+                      replaced buggy __stack_grown* with __stack_past* macros
+
 Sun Jan  4 04:49:01 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 
 	* win32/win32.c (rb_w32_telldir): just returns loc.
@@ -1906,13 +2317,74 @@ Sun Jan  4 04:49:01 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
 	  [ruby-core:18041]
 
 Sun Jan  4 04:45:26 2009  Nobuyoshi Nakada  <nobu@ruby-lang.org>
+        * eval.c:  exclude other thread's stack frames from current one
 
+        * gc.c:  STACK_LENGTH macro takes start parameter
 	* win32/win32.c (rb_w32_select): recalc the rest of timeout for each
 	  iterations.  [ruby-core:18015]
 
+        * node.h: added stk_start pointer to ruby thread struct
+
 Fri Jan  2 03:08:47 2009  Kouhei Sutou  <kou@cozmixng.org>
 
-	* test/rss/: use PNG instead of zlib as binary data. [ruby-dev:35666]
+        * intern.h:  stack_length takes base pointer as parameter
+        
+	* test/rss/: use PNG instead of zlib as binary data. [ruby-dev:35666]       
+
+Tue Dec 19 20:15:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  added (Method|Proc)#(__line__|__file__) methods
+                   call ruby_set_current_source() before adding method nodes
+
+Tue Dec 15  9:15:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  factored rb_eval() into many separate non-inlined
+                  functions to reduce the size of its stack frame when
+                  compiled with gcc.
+                  Factored callcc into 2 functions.
+
+Tue Dec 13  6:10:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  update stack extent just before and after every setjmp
+
+        * gc.c:  replaced rb_gc_stress with gc_getlimit and setlimit
+                 update stack extent after every xmalloc and xrealloc
+                 export rb_gc_stack_grow_direction if not known at compile time
+                 removed dynamic adjustment of malloc_limit
+                 removed workaround for obsolete gcc 2.7.2.3 bug                 
+
+        * signal.h: don't try to clear stress after segsegv.  It's a too late.
+        
+        * rubysig.h:  CHECK_INTS clears ghost references off stack
+
+
+Tue Dec 12  6:11:36 2008  Brent Roman  <brent@mbari.org>
+
+        * eval.c:  exclude other thread's stack frames from current one
+
+        * gc.c:  STACK_LENGTH macro takes start parameter
+
+        * node.h: added stk_start pointer to ruby thread struct
+
+        * intern.h:  stack_length takes base pointer as parameter
+        
+
+Tue Dec  9  8:11:36 2008  Brent Roman  <brent@mbari.org>
+
+     * eval.c:  added Continuation.thread method
+        * cc_mark frees the continuation's stack if its thread is dead
+          avoids recursive gc that segfaults [see Dec 5th, 2007 ruby-core]
+
+        * added cast in PUSH_FRAME() to eliminate gcc 4.2 compiler warnings    
+                   
+        * THREAD_DATA() replaces rb_thread_check() in most contexts
+        
+        * rb_thread_check now complains when passed a Continuation
+          (no longer need redundant check in thgroup_add()
+        
+        * rb_callcc() assigns th->thread before scope_dup()
+          this avoids segfaults if this scope_dup() triggers a gc pass
+        
 
 Tue Nov 11 01:07:32 2008  Kazuhiro NISHIYAMA  <zn@mbf.nifty.com>
 
