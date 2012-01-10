@@ -1,0 +1,2 @@
+#!/bin/sh
+/usr/bin/update-alternatives --remove ruby /usr/local/bin/ruby1.8.7ee
