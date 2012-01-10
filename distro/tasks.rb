@@ -14,19 +14,19 @@ DISTDIR = "ruby-enterprise-#{VENDOR_RUBY_VERSION}-#{REE_VERSION}"
 RUBYGEMS_URL = "http://rubyforge.org/frs/download.php/74343/rubygems-1.5.3.tgz"
 RUBYGEMS_PACKAGE = RUBYGEMS_URL.sub(/.*\//, '')
 
-def create_fakeroot(linux_distro='')
+def create_fakeroot
 	distdir = "/tmp/r8ee-test"
 	create_distdir(distdir)
 	sh "rm -rf fakeroot"
 	sh "mkdir fakeroot"
 	fakeroot = File.expand_path("fakeroot")
-	# Add suffix to binaries to better support Debian's
-	# update-alternatives.
-	if [:debian, :ubuntu].include?(linux_distro)
-		ENV['ARGS'] ||= ''
-		ENV['ARGS'] += " -c --program-suffix=1.8.7ee"
+
+	args = ENV['ARGS'] || ''
+	if ENV['WITH_SUFFIX']
+		args << " -c --program-suffix=1.8.7ee"
 	end
-	sh "#{distdir}/installer --auto='/usr/local' --destdir='#{fakeroot}' #{ENV['ARGS']}"
+	
+	sh "#{distdir}/installer --auto='/usr/local' --destdir='#{fakeroot}' #{args}"
 	puts "*** Ruby Enterprise Edition has been installed to #{fakeroot}"
 end
 
@@ -132,7 +132,7 @@ end
 
 desc "Create a Debian package. Set SKIP_FAKEROOT=1 if you want to bypass fakeroot recreation."
 task 'package:debian' do
-	create_fakeroot(:debian) if ENV['SKIP_FAKEROOT'].nil? || ENV['SKIP_FAKEROOT'].empty?
+	create_fakeroot if ENV['SKIP_FAKEROOT'].nil? || ENV['SKIP_FAKEROOT'].empty?
 	sh "rm -rf fakeroot/DEBIAN"
 	sh "cp -R distro/debian fakeroot/DEBIAN"
 	
