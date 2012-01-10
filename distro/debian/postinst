@@ -2,15 +2,15 @@
 
 /usr/bin/update-alternatives --install /usr/bin/ruby ruby /usr/bin/ruby1.8 500 \
 --slave   /usr/share/man/man1/ruby.1.gz ruby.1.gz \
-/usr/share/man/man1/ruby.1.8.gz \
+/usr/share/man/man1/ruby.1.8.1.gz \
 --slave   /usr/bin/ri ri /usr/bin/ri1.8 \
 --slave   /usr/bin/irb irb /usr/bin/irb1.8 \
 --slave   /usr/bin/erb erb /usr/bin/erb1.8 \
 --slave   /usr/bin/gem gem /usr/bin/gem1.8
 
-/usr/bin/update-alternatives --install /usr/bin/ruby ruby /usr/local/bin/ruby1.8.7ee 400 \
+/usr/bin/update-alternatives --install /usr/bin/ruby ruby /usr/local/bin/ruby1.8.7ee 600 \
 --slave   /usr/share/man/man1/ruby.1.gz ruby.1.gz \
-/usr/local/share/man/man1/ruby.1.8.7ee.gz \
+/usr/local/share/man/man1/ruby.1.8.7ee.1 \
 --slave   /usr/local/bin/ri ri /usr/bin/ri1.8.7ee \
 --slave   /usr/local/bin/irb irb /usr/bin/irb1.8.7ee \
 --slave   /usr/local/bin/erb erb /usr/bin/erb1.8.7ee \

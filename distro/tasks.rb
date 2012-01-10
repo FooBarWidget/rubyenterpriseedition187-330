@@ -151,7 +151,7 @@ task 'package:debian' do
 	File.open("fakeroot/DEBIAN/control", "w") do |f|
 		f.write(template.result(binding))
 	end
-	
+  sh "fakeroot unlink /usr/local/bin/ruby" if options[:ruby_filename] != 'ruby'
 	sh "fakeroot dpkg -b fakeroot ruby-enterprise_#{VENDOR_RUBY_VERSION}-#{REE_VERSION}_#{arch}.deb"
 end
 
