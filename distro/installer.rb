@@ -30,7 +30,11 @@ class Installer
 		if !options[:extra_configure_args].empty?
 			@extra_configure_args = options[:extra_configure_args].join(" ")
 		end
-		
+	  if !options[:ruby_filename].empty?
+      @ruby_filename = options[:ruby_filename]
+    else
+      @ruby_filename = 'ruby'
+    end	
 		if RUBY_PLATFORM =~ /darwin/
 			ENV['PATH'] = "#{ENV['PATH']}:/usr/local/mysql/bin"
 		end
@@ -279,6 +283,9 @@ private
 	
 	def install_ruby
 		if install_autoconf_package('source', 'Ruby Enterprise Edition')
+      if @ruby_filename != 'ruby'
+        sh "ln -s #{@destdir}#{@prefix}/bin/#{@ruby_filename} #{@destdir}#{@prefix}/bin/ruby"
+      end
 			# Some installed files may have wrong permissions
 			# (not world-readable). So we fix this.
 			if sh("chmod -R g+r,o+r,o-w #{@destdir}#{@prefix}/lib/ruby")
@@ -314,11 +321,10 @@ private
 		site_libdir = "#{basedir}/site_ruby/1.8"
 		site_extlibdir = "#{site_libdir}/#{archname}"
 		ENV['RUBYLIB'] = "#{libdir}:#{extlibdir}:#{site_libdir}:#{site_extlibdir}"
-		
 		Dir.chdir("rubygems") do
 			line
 			color_puts "<banner>Installing RubyGems...</banner>"
-			if !sh("#{@destdir}#{@prefix}/bin/ruby", "setup.rb", "--no-ri", "--no-rdoc")
+			if !sh("#{@destdir}#{@prefix}/bin/#{@ruby_filename}", "setup.rb", "--no-ri", "--no-rdoc")
 				puts "*** Cannot install RubyGems"
 				return false
 			end
@@ -655,6 +661,9 @@ parser = OptionParser.new do |opts|
 	opts.on("--no-dev-docs", "Do not install Ruby developer#{newline}documentation.") do
 		options[:install_dev_docs] = false
 	end
+  opts.on("-r", "--ruby-filename ARG", String, "Specify the name of the Ruby binary") do |arg|
+    options[:ruby_filename] = arg
+  end
 	opts.on("-h", "--help", "Show this message.") do
 		puts opts
 		exit
