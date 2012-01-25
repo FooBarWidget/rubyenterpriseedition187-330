@@ -73,12 +73,7 @@ end
 # See Dependency for more information.
 module Dependencies # :nodoc: all
 	APPLE_COMPILER_INSTALL_INSTRUCTIONS =
-		"Please install the Apple Development Tools: http://developer.apple.com/tools/; " +
-		"Please note that since Xcode 4, Apple uses llvm-gcc as its default compiler, which " +
-		"is known to contain bugs. Some of these bugs caused Ruby Enterprise Edition to be " +
-		"incorrectly compiled, causing crashes. If you have the Development Tools installed " +
-		"then it means that this installer failed to find the non-llvm version of the compiler. " +
-		"In that case, please tell us about this problem."
+		"Please install OS X GCC Installer: https://github.com/kennethreitz/osx-gcc-installer"
 
 	include PlatformInfo
 	
