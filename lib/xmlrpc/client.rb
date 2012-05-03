@@ -573,7 +573,10 @@ module XMLRPC
           WEBrick::Cookie.new(cookie.name, cookie.value).to_s
         end.join("; ")
       end
-
+      ce = resp["Content-Encoding"]
+      if ce.eql?"gzip"
+        data = Zlib::GzipReader.new(StringIO.new(data)).read
+      end
       return data
     end
 
