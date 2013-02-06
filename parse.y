@@ -955,6 +955,7 @@ op		: '|'		{ $$ = '|'; }
 		| tGEQ		{ $$ = tGEQ; }
 		| '<'		{ $$ = '<'; }
 		| tLEQ		{ $$ = tLEQ; }
+		| tNEQ		{ $$ = tNEQ; }
 		| tLSHFT	{ $$ = tLSHFT; }
 		| tRSHFT	{ $$ = tRSHFT; }
 		| '+'		{ $$ = '+'; }
